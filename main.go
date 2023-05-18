@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 type Message interface {
 	Kind() string
 	Routes() []string
 	Link(name string) string
-	Cached(name string) Message
+	Cached(name string) (string, Message)
 }
 
 type Auth struct {
@@ -56,15 +57,11 @@ func (c *Client) addressOf(name string) string {
 	// saving the result
 
 	// split up name by "."s
-	// for each prefix:
+	// for each prefix including tail
 	// 	m.Routes()
-	//	m.Link() & caching prefix address
 	//	m.Embed() & caching Message at address
+	//	m.Link() & caching prefix address
 	// 	request(addr) & caching Message at address
-	// for tail
-	//	m.Routes() & m.Link() & caching full url
-	//	m.Embed() & caching embed
-	//	return addr
 	return "/foo"
 }
 
@@ -137,6 +134,9 @@ func (c *Client) Scan(out any) *Client {
 }
 
 type Metadata struct {
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Version   int
 }
 
 type BaseMessage struct {
@@ -157,16 +157,44 @@ func (b *BaseMessage) Link(name string) string {
 	return ""
 }
 
-func (b *BaseMessage) Cached(name string) Message {
-	return nil
+func (b *BaseMessage) Cached(name string) (string, Message) {
+	return "", nil
 }
 
 type Namespace struct {
 	BaseMessage
+	routes []string
+	urls   map[string]string
+	embeds map[string]Message
 }
 
-func (*Namespace) Kind() string {
+func (n *Namespace) Kind() string {
 	return "Namespace"
+}
+
+func (n *Namespace) Routes() []string {
+	return n.routes
+}
+
+func (n *Namespace) Link(name string) string {
+	url, ok := n.urls[name]
+	if ok {
+		return url
+	} else {
+		return name
+	}
+}
+
+func (n *Namespace) Cached(name string) (string, Message) {
+
+	cached, ok := n.embeds[name]
+
+	if ok {
+		url := n.Link(name)
+		return url, cached
+	}
+
+	return "", nil
 }
 
 type Service struct {
