@@ -11,14 +11,26 @@ var Root = &Namespace{
         }, 
         routes: []string{"Example",}, 
         urls: map[string]string{}, 
-        embeds: map[string]Message{}, 
+        embeds: map[string]Message{
+		"Example": Example,
+	},
 } 
+
+var Example = &Namespace{
+        CommonMessage: CommonMessage{ 
+                kind: "Namespace", 
+                ApiVersion: "0", 
+        }, 
+        routes: []string{"rpc",},
+        urls: map[string]string{}, 
+        embeds: map[string]Message{},
+}
 
 
 type Message interface {
 	Kind() string
 	Routes() []string
-	Fetch(name string) (*Request, Message)
+	Fetch(name string) (*Request)
 	Call(args any) (*Request)
 }
 
@@ -27,6 +39,7 @@ type Request struct {
 	Path   string
 	State  any
 	Args   any
+	Cached Message
 }
 
 func (r *Request) UrlFrom(base string) string {
@@ -53,8 +66,8 @@ func (b *CommonMessage) Routes() []string {
 	return []string{}
 }
 
-func (b *CommonMessage) Fetch(name string) (*Request, Message) {
-	return nil, nil
+func (b *CommonMessage) Fetch(name string) (*Request) {
+	return nil
 }
 
 func (b *CommonMessage) Call(args any) *Request {
@@ -76,10 +89,9 @@ func (n *Namespace) Routes() []string {
 	return n.routes
 }
 
-func (n *Namespace) Fetch(name string) (*Request, Message) {
-	request := Request{
+func (n *Namespace) Fetch(name string) (*Request) {
+	request := &Request{
 		Action:"get",
-		Path: "",
 	}
 	url, ok := n.urls[name]
 	if ok {
@@ -91,10 +103,10 @@ func (n *Namespace) Fetch(name string) (*Request, Message) {
 	message, ok := n.embeds[name]
 
 	if ok {
-		return &request, message
+		request.Cached = message
 	}
 
-	return &request, nil
+	return request
 }
 
 type Service struct {

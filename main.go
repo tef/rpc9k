@@ -8,17 +8,12 @@ import (
 )
 
 func main() {
-	c2 := &client.Client{
-		Url:"/",
-		Options: nil,
-		Message: wire.Root,
-		Err: nil,
-	}
 
+	c2 := client.New("/", wire.Root, nil)
 	r := c2.Fetch("Example")
 
-	fmt.Println("fetch", r)
-	fmt.Println("begin")
+	fmt.Println("fetched", r)
+	fmt.Println("begin dial")
 
 	c := client.Dial("url", &client.Auth{Name: "n", Token: "t"})
 	if c.Err != nil {
