@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"errors"
+	neturl "net/url"
 
 	"github.com/tef/rpc9k/wire"
 )
@@ -21,33 +22,30 @@ type Client struct {
 	Cache map[string]*Client
 }
 
-func New(url string, message wire.Message, options any) *Client{
+func New(rawUrl string, message wire.Message, options any) *Client{
 	return &Client{
 		Options: options,
-		Url: url,
+		Url: rawUrl,
 		Message: message,
 		Err: nil,
 		Cache: make(map[string]*Client),
 	}
 }
 
-func Dial(url string, options any) *Client {
-
+func Dial(rawUrl string, options any) *Client {
 	request := &wire.Request{
 		Action: "get",
-		Path: url,
+		Path: rawUrl,
 	}
 
 	client := &Client{
-		Url: url,
-		Message: nil,
 		Options: options,
-		Err:     nil,
+		Url: "",
 	}
 	return client.Request(request)
 }
 
-func (c *Client) Error(err error) *Client {
+func (c *Client) SetErr(err error) *Client {
 	return &Client{
 		Options: c.Options,
 		Err: err,
@@ -77,6 +75,7 @@ func (c *Client) Fetch(name string) *Client {
 	}
 	if c.Cache != nil {
 		if client, ok := c.Cache[name]; ok {
+			fmt.Println("Cached Fetch:", name)
 			return client
 		}
 	}
@@ -85,7 +84,7 @@ func (c *Client) Fetch(name string) *Client {
 	//	req = c.Message.Fetch(name)
 	//	client = c.Request(req)
 
-	fmt.Println("Fetch:", name)
+	fmt.Println("Non Cached Fetch:", name)
 			
 	client := c
 	request := client.Message.Fetch(name)
@@ -93,12 +92,7 @@ func (c *Client) Fetch(name string) *Client {
 	fmt.Println("Request:", request)
 
 	if request == nil {
-		client =  &Client{
-			Options: c.Options,
-			Url: "",
-			Message: nil,
-			Err: errors.New("can't fetch "+name),
-		}
+		client =  c.SetErr(errors.New("can't fetch "+name))
 	} else {
 		client = c.Request(request)
 
@@ -117,7 +111,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 	if r != nil && r.Cached != nil {
 		client := &Client{
 			Message: r.Cached,
-			Url: r.UrlFrom(c.Url),
+			Url: c.joinUrl(r),
 			Options: c.Options,
 			Err: nil,
 		}
@@ -135,7 +129,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 	client := &Client{
 		Message: wire.Root,
-		Url: c.Url,
+		Url: c.joinUrl(r),
 		Options: c.Options,
 		Err:     nil,
 	}
@@ -143,6 +137,17 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 }
 
+func (c *Client) joinUrl(r *wire.Request) string{
+	if r == nil {
+		return c.Url
+	}
+	if c.Url == "" {
+		return r.Path
+	}
+
+	url, _:= neturl.JoinPath(c.Url, r.Path)
+	return url
+}
 
 func (c *Client) Scan(out any) *Client {
 	if c.Err != nil {

@@ -42,10 +42,6 @@ type Request struct {
 	Cached Message
 }
 
-func (r *Request) UrlFrom(base string) string {
-	return base+","+r.Path
-}
-
 type Metadata struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -97,7 +93,7 @@ func (n *Namespace) Fetch(name string) (*Request) {
 	if ok {
 		request.Path = url
 	} else {
-		request.Path = name
+		request.Path = name +"/"
 	}
 
 	message, ok := n.embeds[name]

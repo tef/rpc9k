@@ -12,14 +12,21 @@ func main() {
 	c2 := client.New("/", wire.Root, nil)
 	r := c2.Fetch("Example")
 
-	fmt.Println("fetched", r)
+	if r.Err != nil {
+		fmt.Println("err:", r.Err)
+		return
+	}
+
+	fmt.Println("fetched", c2.Fetch("Example"))
 	fmt.Println("begin dial")
 
-	c := client.Dial("url", &client.Auth{Name: "n", Token: "t"})
+	c := client.Dial("/url/", &client.Auth{Name: "n", Token: "t"})
 	if c.Err != nil {
 		fmt.Println("err:", c.Err)
 		return
 	}
+
+	fmt.Println("dialed", c)
 
 	var Output struct {
 		A int
@@ -32,6 +39,8 @@ func main() {
 		fmt.Println("err:", reply.Err)
 		return
 	}
+
+	fmt.Println("reply", reply)
 
 	fmt.Println("Output", Output)
 
