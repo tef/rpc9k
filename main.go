@@ -41,7 +41,6 @@ func main() {
 	}
 
 	fmt.Println("reply", reply)
-
 	fmt.Println("Output", Output)
 
 	example := c.Fetch("Example")
