@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"errors"
 	neturl "net/url"
+	"strings"
 
 	"github.com/tef/rpc9k/wire"
 )
@@ -38,15 +39,20 @@ func Dial(rawUrl string, options any) *Client {
 		Path: rawUrl,
 	}
 
+	cache := make(map[string]*Client)
 	client := &Client{
 		Options: options,
 		Url: "",
+		Cache: cache,
 	}
-	return client.Request(request)
+	client = client.Request(request)
+	client.Cache = cache
+	return client
 }
 
-func (c *Client) SetErr(err error) *Client {
+func (c *Client) addError(err error) *Client {
 	return &Client{
+		Message: &wire.Error{Id:"error", Text:err.Error()},
 		Options: c.Options,
 		Err: err,
 	}
@@ -55,6 +61,8 @@ func (c *Client) SetErr(err error) *Client {
 func (c *Client) Invoke(name string, args any) *Client {
 	if c.Err != nil {
 		return c
+	} else if c.Message == nil || c.Url == "" {
+		return c.addError(errors.New("No url opened"))
 	}
 	return c.Fetch(name).Call(args)
 }
@@ -62,6 +70,8 @@ func (c *Client) Invoke(name string, args any) *Client {
 func (c *Client) Call(args any) *Client {
 	if c.Err != nil {
 		return c
+	} else if c.Message == nil || c.Url == "" {
+		return c.addError(errors.New("No url opened"))
 	}
 
 	request := c.Message.Call(args)
@@ -69,13 +79,15 @@ func (c *Client) Call(args any) *Client {
 
 }
 
-func (c *Client) Fetch(name string) *Client {
+func (c *Client) Fetch(path string) *Client {
 	if c.Err != nil {
 		return c
+	} else if c.Message == nil || c.Url == "" {
+		return c.addError(errors.New("No url opened"))
 	}
 	if c.Cache != nil {
-		if client, ok := c.Cache[name]; ok {
-			fmt.Println("Cached Fetch:", name)
+		if client, ok := c.Cache[path]; ok {
+			fmt.Println("Cached Fetch:", path)
 			return client
 		}
 	}
@@ -84,22 +96,37 @@ func (c *Client) Fetch(name string) *Client {
 	//	req = c.Message.Fetch(name)
 	//	client = c.Request(req)
 
-	fmt.Println("Non Cached Fetch:", name)
-			
+	
+	fmt.Println("Cached", c.Cache)
+
+	segments := strings.Split(path, ":")
+	prefix := ""
 	client := c
-	request := client.Message.Fetch(name)
+	for _, name := range segments {
+		if prefix == "" {
+			prefix = name
+		} else {
+			prefix += ":"+name
+		}
 
-	fmt.Println("Request:", request)
+		fmt.Println("Non Cached Fetch:", path, "getting", prefix)
 
-	if request == nil {
-		client =  c.SetErr(errors.New("can't fetch "+name))
-	} else {
-		client = c.Request(request)
+		request := client.Message.Fetch(name)
 
-		if client.Err == nil && c.Cache != nil {
-			c.Cache[name] = client
+		fmt.Println("Request:", prefix, request)
+
+		if request == nil {
+			client =  c.addError(errors.New("can't fetch "+name))
+		} else {
+			client = c.Request(request)
+
+			if client.Err == nil && c.Cache != nil {
+				c.Cache[prefix] = client
+				fmt.Println("Add Cached", c.Cache)
+			}
 		}
 	}
+
 	return client
 }
 
@@ -117,12 +144,8 @@ func (c *Client) Request(r *wire.Request) *Client {
 		}
 		return client
 	}
-	// build a httprequest(method, url) from Request
 
 	// if reply is a future:
-	// while True
-	// reply := http.Blah
-	//     ...
 	// decode args
 	// if json, wrap in Result
 	// if 9k type, bring it up

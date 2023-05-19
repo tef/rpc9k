@@ -26,20 +26,19 @@ var Example = &Namespace{
         embeds: map[string]Message{},
 }
 
-
-type Message interface {
-	Kind() string
-	Routes() []string
-	Fetch(name string) (*Request)
-	Call(args any) (*Request)
-}
-
 type Request struct {
 	Action string // adverb: get, call, list
 	Path   string
 	State  any
 	Args   any
 	Cached Message
+}
+
+type Message interface {
+	Kind() string
+	Routes() []string
+	Fetch(name string) (*Request)
+	Call(args any) (*Request)
 }
 
 type Metadata struct {
@@ -68,6 +67,17 @@ func (b *CommonMessage) Fetch(name string) (*Request) {
 
 func (b *CommonMessage) Call(args any) *Request {
 	return nil
+}
+
+type Error struct {
+	CommonMessage
+	Id string
+	Text string
+}
+
+
+func (n *Error) Kind() string {
+	return "Error"
 }
 
 type Namespace struct {
@@ -119,6 +129,14 @@ type Procedure struct {
 
 func (*Procedure) Kind() string {
 	return "Procedure"
+}
+
+type JSON struct {
+	CommonMessage
+}
+
+func (*JSON) Kind() string {
+	return "JSON"
 }
 
 var root = &Namespace{
