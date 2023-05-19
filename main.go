@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -8,8 +9,8 @@ import (
 type Message interface {
 	Kind() string
 	Routes() []string
-	Link(name string) string
-	Cached(name string) (string, Message)
+	Fetch(name string) (*Request, Message)
+	Call(args any) (*Request)
 }
 
 type Auth struct {
@@ -18,15 +19,19 @@ type Auth struct {
 }
 
 type Request struct {
-	Method string
+	Action string // adverb: get, call, list
 	Path   string
+	State  any
 	Args   any
 }
 
+func (r *Request) UrlFrom(base string) string {
+	return base+","+r.Path
+}
 type Client struct {
-	BaseUrl string
-	Message Message
 	Options any
+	Url string
+	Message Message
 	Err     error
 }
 
@@ -36,38 +41,17 @@ func Dial(url string, options any) *Client {
 	var message Message
 	message = &Namespace{}
 	client := &Client{
-		BaseUrl: url,
+		Url: url,
 		Message: message,
 		Options: options,
 		Err:     nil,
 	}
 	return client
 }
-func (c *Client) cacheResult(url string, m Message) {
-	return
-}
 
-func (c *Client) cachedResult(url string) Message {
-	return nil
-}
+func (c *Client) Request(r *Request) *Client {
+	// build a httprequest(method, url) from Request
 
-func (c *Client) addressOf(name string) string {
-	// if name isn't resolved, look things up
-	// as you go
-	// saving the result
-
-	// split up name by "."s
-	// for each prefix including tail
-	// 	m.Routes()
-	//	m.Embed() & caching Message at address
-	//	m.Link() & caching prefix address
-	// 	request(addr) & caching Message at address
-	return "/foo"
-}
-
-func (c *Client) request(r *Request) *Client {
-	// encode args as json
-	//
 	// if reply is a future:
 	// while True
 	// reply := http.Blah
@@ -78,7 +62,7 @@ func (c *Client) request(r *Request) *Client {
 
 	client := &Client{
 		Message: c.Message,
-		BaseUrl: c.BaseUrl,
+		Url: c.Url,
 		Options: c.Options,
 		Err:     nil,
 	}
@@ -90,43 +74,43 @@ func (c *Client) Invoke(name string, args any) *Client {
 	if c.Err != nil {
 		return c
 	}
-	url := c.addressOf(name)
-	request := &Request{
-		Method: "POST",
-		Path:   url,
-		Args:   args,
+	api := c.Fetch(name)
+	return api.Call(args)
+}
+
+func (c *Client) Call(args any) *Client {
+	if c.Err != nil {
+		return c
 	}
 
-	return c.request(request)
+	request := c.Message.Call(args)
+	return c.Request(request)
+
 }
 
 func (c *Client) Fetch(name string) *Client {
 	if c.Err != nil {
 		return c
 	}
-	url := c.addressOf(name)
-
-	message := c.cachedResult(url)
+	request, message := c.Message.Fetch(name)
 
 	if message != nil {
 		return &Client{
-			BaseUrl: url,
+			Options: c.Options,
+			Url: c.Url,
 			Message: message,
 			Err:     nil,
+		}
+	} else if request == nil {
+		return &Client{
 			Options: c.Options,
+			Url: "",
+			Message: nil,
+			Err: errors.New("can't fetch "+name),
 		}
 	}
 
-	request := &Request{
-		Method: "GET",
-		Path:   url,
-		Args:   nil,
-	}
-	result := c.request(request)
-	if result.Err != nil {
-		c.cacheResult(url, result.Message)
-	}
-	return result
+	return c.Request(request)
 }
 
 func (c *Client) Scan(out any) *Client {
@@ -139,30 +123,30 @@ type Metadata struct {
 	Version   int
 }
 
-type BaseMessage struct {
+type CommonMessage struct {
 	kind       string
 	ApiVersion string
 	Metadata   Metadata
 }
 
-func (b *BaseMessage) Kind() string {
+func (b *CommonMessage) Kind() string {
 	return b.kind
 }
 
-func (b *BaseMessage) Routes() []string {
+func (b *CommonMessage) Routes() []string {
 	return []string{}
 }
 
-func (b *BaseMessage) Link(name string) string {
-	return ""
+func (b *CommonMessage) Fetch(name string) (*Request, Message) {
+	return nil, nil
 }
 
-func (b *BaseMessage) Cached(name string) (string, Message) {
-	return "", nil
+func (b *CommonMessage) Call(args any) *Request {
+	return nil
 }
 
 type Namespace struct {
-	BaseMessage
+	CommonMessage
 	routes []string
 	urls   map[string]string
 	embeds map[string]Message
@@ -176,29 +160,29 @@ func (n *Namespace) Routes() []string {
 	return n.routes
 }
 
-func (n *Namespace) Link(name string) string {
+func (n *Namespace) Fetch(name string) (*Request, Message) {
+	request := Request{
+		Action:"get",
+		Path: "",
+	}
 	url, ok := n.urls[name]
 	if ok {
-		return url
+		request.Path = url
 	} else {
-		return name
+		request.Path = name
 	}
-}
 
-func (n *Namespace) Cached(name string) (string, Message) {
-
-	cached, ok := n.embeds[name]
+	message, ok := n.embeds[name]
 
 	if ok {
-		url := n.Link(name)
-		return url, cached
+		return &request, message
 	}
 
-	return "", nil
+	return &request, nil
 }
 
 type Service struct {
-	BaseMessage
+	CommonMessage
 }
 
 func (*Service) Kind() string {
@@ -206,14 +190,35 @@ func (*Service) Kind() string {
 }
 
 type Procedure struct {
-	BaseMessage
+	CommonMessage
 }
 
 func (*Procedure) Kind() string {
 	return "Procedure"
 }
 
+var root = &Namespace{
+	CommonMessage: CommonMessage{
+		kind: "Namespace",
+		ApiVersion: "0",
+	},
+	routes: []string{"Example",},
+	urls: map[string]string{},
+	embeds: map[string]Message{},
+}
+
+
 func main() {
+	c2 := &Client{
+		Url:"/",
+		Options: nil,
+		Message: root,
+		Err: nil,
+	}
+
+	r := c2.Fetch("Example")
+
+	fmt.Println("fetch", r)
 	fmt.Println("begin")
 
 	c := Dial("url", &Auth{Name: "n", Token: "t"})
