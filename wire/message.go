@@ -2,6 +2,7 @@ package wire
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -58,7 +59,16 @@ type Envelope struct {
 }
 
 func (e *Envelope) UnmarshalJSON(bytes []byte) error {
-	e.M = &Namespace{}
+	var M CommonMessage
+
+	err := json.Unmarshal(bytes, &M)
+	if err != nil { return err }
+
+	builder, ok := Messages[M.Kind]
+	if !ok {
+		return errors.New("Unknown message: "+ M.Kind)
+	}
+	e.M = builder()
 	return json.Unmarshal(bytes, e.M)
 }
 
@@ -67,6 +77,10 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 }
 
 type MessageBuilder func() Message
+
+var Messages = map[string]MessageBuilder {
+	"Namespace": func() Message {return &Namespace{CommonMessage: CommonMessage{Kind: "Namespace"}}},
+}
 
 type Metadata struct {
 	CreatedAt time.Time `json:"CreatedAt"`
