@@ -1,14 +1,13 @@
 package client
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	neturl "net/url"
 	"strings"
 
 	"github.com/tef/rpc9k/wire"
 )
-
 
 type Auth struct {
 	Name  string
@@ -17,44 +16,41 @@ type Auth struct {
 
 type Client struct {
 	Options any
-	Url string
+	Url     string
 	Message wire.Message
 	Err     error
-	Cache map[string]*Client
+	Cache   map[string]*Client
 }
 
-func New(rawUrl string, message wire.Message, options any) *Client{
+func New(rawUrl string, message wire.Message, options any) *Client {
 	return &Client{
 		Options: options,
-		Url: rawUrl,
+		Url:     rawUrl,
 		Message: message,
-		Err: nil,
-		Cache: make(map[string]*Client),
+		Err:     nil,
+		Cache:   make(map[string]*Client),
 	}
 }
 
 func Dial(rawUrl string, options any) *Client {
 	request := &wire.Request{
 		Action: "get",
-		Path: rawUrl,
+		Path:   rawUrl,
 	}
 
-	cache := make(map[string]*Client)
 	client := &Client{
 		Options: options,
-		Url: "",
-		Cache: cache,
 	}
 	client = client.Request(request)
-	client.Cache = cache
+	client.Cache = make(map[string]*Client)
 	return client
 }
 
 func (c *Client) addError(err error) *Client {
 	return &Client{
-		Message: &wire.Error{Id:"error", Text:err.Error()},
+		Message: &wire.Error{Id: "error", Text: err.Error()},
 		Options: c.Options,
-		Err: err,
+		Err:     err,
 	}
 }
 
@@ -96,7 +92,6 @@ func (c *Client) Fetch(path string) *Client {
 	//	req = c.Message.Fetch(name)
 	//	client = c.Request(req)
 
-	
 	fmt.Println("Cached", c.Cache)
 
 	segments := strings.Split(path, ":")
@@ -106,7 +101,7 @@ func (c *Client) Fetch(path string) *Client {
 		if prefix == "" {
 			prefix = name
 		} else {
-			prefix += ":"+name
+			prefix += ":" + name
 		}
 
 		fmt.Println("Non Cached Fetch:", path, "getting", prefix)
@@ -116,7 +111,7 @@ func (c *Client) Fetch(path string) *Client {
 		fmt.Println("Request:", prefix, request)
 
 		if request == nil {
-			client =  c.addError(errors.New("can't fetch "+name))
+			client = c.addError(errors.New("can't fetch " + name))
 		} else {
 			client = c.Request(request)
 
@@ -138,9 +133,9 @@ func (c *Client) Request(r *wire.Request) *Client {
 	if r != nil && r.Cached != nil {
 		client := &Client{
 			Message: r.Cached,
-			Url: c.joinUrl(r),
+			Url:     c.joinUrl(r),
 			Options: c.Options,
-			Err: nil,
+			Err:     nil,
 		}
 		return client
 	}
@@ -152,7 +147,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 	client := &Client{
 		Message: wire.Root,
-		Url: c.joinUrl(r),
+		Url:     c.joinUrl(r),
 		Options: c.Options,
 		Err:     nil,
 	}
@@ -160,7 +155,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 }
 
-func (c *Client) joinUrl(r *wire.Request) string{
+func (c *Client) joinUrl(r *wire.Request) string {
 	if r == nil {
 		return c.Url
 	}
@@ -168,7 +163,7 @@ func (c *Client) joinUrl(r *wire.Request) string{
 		return r.Path
 	}
 
-	url, _:= neturl.JoinPath(c.Url, r.Path)
+	url, _ := neturl.JoinPath(c.Url, r.Path)
 	return url
 }
 
@@ -179,4 +174,3 @@ func (c *Client) Scan(out any) *Client {
 
 	return c
 }
-

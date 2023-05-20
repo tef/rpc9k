@@ -1,29 +1,30 @@
 package wire
 
 import (
+	"encoding/json"
 	"time"
 )
 
-var Root = &Namespace{ 
-        CommonMessage: CommonMessage{ 
-                kind: "Namespace", 
-                ApiVersion: "0", 
-        }, 
-        routes: []string{"Example",}, 
-        urls: map[string]string{}, 
-        embeds: map[string]Message{
-		"Example": Example,
+var Root = &Namespace{
+	CommonMessage: CommonMessage{
+		Kind:       "Namespace",
+		ApiVersion: "0",
 	},
-} 
+	Names: []string{"Example"},
+	Urls:  map[string]string{},
+	Embeds: map[string]Envelope{
+		"Example": Envelope{M: Example},
+	},
+}
 
 var Example = &Namespace{
-        CommonMessage: CommonMessage{ 
-                kind: "Namespace", 
-                ApiVersion: "0", 
-        }, 
-        routes: []string{"rpc",},
-        urls: map[string]string{}, 
-        embeds: map[string]Message{},
+	CommonMessage: CommonMessage{
+		Kind:       "Namespace",
+		ApiVersion: "0",
+	},
+	Names:  []string{"rpc"},
+	Urls:   map[string]string{},
+	Embeds: map[string]Envelope{},
 }
 
 type Request struct {
@@ -35,33 +36,42 @@ type Request struct {
 }
 
 type Message interface {
-	Kind() string
 	Routes() []string
-	Fetch(name string) (*Request)
-	Call(args any) (*Request)
+	Fetch(name string) *Request
+
+	Call(args any) *Request
+}
+
+type Envelope struct {
+	M Message
+}
+
+func (e *Envelope) UnmarshalJSON(bytes []byte) error {
+	e.M = &Namespace{}
+	return json.Unmarshal(bytes, e.M)
+}
+
+func (e Envelope) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.M)
 }
 
 type Metadata struct {
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Version   int
+	CreatedAt time.Time `json:"CreatedAt"`
+	UpdatedAt time.Time `json:"UpdatedAt"`
+	Version   int       `json:"Version"`
 }
 
 type CommonMessage struct {
-	kind       string
-	ApiVersion string
-	Metadata   Metadata
-}
-
-func (b *CommonMessage) Kind() string {
-	return b.kind
+	Kind       string   `json:"Kind"`
+	ApiVersion string   `json:"ApiVersion"`
+	Metadata   Metadata `json:"Metadata"`
 }
 
 func (b *CommonMessage) Routes() []string {
 	return []string{}
 }
 
-func (b *CommonMessage) Fetch(name string) (*Request) {
+func (b *CommonMessage) Fetch(name string) *Request {
 	return nil
 }
 
@@ -71,45 +81,36 @@ func (b *CommonMessage) Call(args any) *Request {
 
 type Error struct {
 	CommonMessage
-	Id string
+	Id   string
 	Text string
-}
-
-
-func (n *Error) Kind() string {
-	return "Error"
 }
 
 type Namespace struct {
 	CommonMessage
-	routes []string
-	urls   map[string]string
-	embeds map[string]Message
-}
-
-func (n *Namespace) Kind() string {
-	return "Namespace"
+	Names  []string            `json:"Names"`
+	Urls   map[string]string   `json:"Urls"`
+	Embeds map[string]Envelope `json:"Embeds"`
 }
 
 func (n *Namespace) Routes() []string {
-	return n.routes
+	return n.Names
 }
 
-func (n *Namespace) Fetch(name string) (*Request) {
+func (n *Namespace) Fetch(name string) *Request {
 	request := &Request{
-		Action:"get",
+		Action: "get",
 	}
-	url, ok := n.urls[name]
+	url, ok := n.Urls[name]
 	if ok {
 		request.Path = url
 	} else {
-		request.Path = name +"/"
+		request.Path = name + "/"
 	}
 
-	message, ok := n.embeds[name]
+	message, ok := n.Embeds[name]
 
 	if ok {
-		request.Cached = message
+		request.Cached = message.M
 	}
 
 	return request
@@ -117,36 +118,20 @@ func (n *Namespace) Fetch(name string) (*Request) {
 
 type Service struct {
 	CommonMessage
-}
-
-func (*Service) Kind() string {
-	return "Service"
+	State   map[string]string
+	Methods []string
+	Urls    map[string]string
+	Embeds  map[string]Envelope
 }
 
 type Procedure struct {
 	CommonMessage
-}
-
-func (*Procedure) Kind() string {
-	return "Procedure"
+	State     map[string]string
+	Arguments []string
+	Result    Message
 }
 
 type JSON struct {
 	CommonMessage
+	Value *json.RawMessage
 }
-
-func (*JSON) Kind() string {
-	return "JSON"
-}
-
-var root = &Namespace{
-	CommonMessage: CommonMessage{
-		kind: "Namespace",
-		ApiVersion: "0",
-	},
-	routes: []string{"Example",},
-	urls: map[string]string{},
-	embeds: map[string]Message{},
-}
-
-

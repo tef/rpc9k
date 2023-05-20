@@ -1,10 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
-	"github.com/tef/rpc9k/wire"
 	"github.com/tef/rpc9k/client"
+	"github.com/tef/rpc9k/wire"
 )
 
 func main() {
@@ -59,4 +60,25 @@ func main() {
 
 	fmt.Println("end")
 
+	fmt.Println(wire.Root)
+
+	envelope := wire.Envelope{M: wire.Root}
+
+	b, err := json.Marshal(envelope)
+
+	if err != nil {
+		fmt.Println("err", err)
+	} else {
+		fmt.Println("envelope", string(b))
+	}
+
+	var envelope2 wire.Envelope
+
+	err = json.Unmarshal(b, &envelope2)
+
+	if err != nil {
+		fmt.Println("err", err)
+	} else {
+		fmt.Println("envelope", envelope2.M)
+	}
 }
