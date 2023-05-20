@@ -42,6 +42,17 @@ type Message interface {
 	Call(args any) *Request
 }
 
+
+// Can't use Message as a struct member when said struct
+// gets converted to and from json, encoder doesn't know
+// how to turn JSON into a given interface, and we can't
+// hook a method onto the Message interface type either.
+
+// ... but we can override a struct's behaviour, and so
+// we have a container struct that contains one field,
+// a message, and the container knows how to encode or
+// decode to json
+
 type Envelope struct {
 	M Message
 }
@@ -54,6 +65,8 @@ func (e *Envelope) UnmarshalJSON(bytes []byte) error {
 func (e Envelope) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.M)
 }
+
+type MessageBuilder func() Message
 
 type Metadata struct {
 	CreatedAt time.Time `json:"CreatedAt"`
