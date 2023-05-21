@@ -3,7 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
-	neturl "net/url"
+	//neturl "net/url"
 	"strings"
 
 	"github.com/tef/rpc9k/wire"
@@ -35,7 +35,7 @@ func New(rawUrl string, message wire.Message, options any) *Client {
 func Dial(rawUrl string, options any) *Client {
 	request := &wire.Request{
 		Action: "get",
-		Path:   rawUrl,
+		Base:   rawUrl,
 	}
 
 	client := &Client{
@@ -53,7 +53,8 @@ func (c *Client) setErr(err error) *Client {
 		Err:     err,
 	}
 }
-func (c *Client) setError(args ...any) *Client {
+
+func (c *Client) setErrorText(args ...any) *Client {
 	text := fmt.Sprintln(args...)
 	err := errors.New(text)
 	return &Client{
@@ -63,11 +64,19 @@ func (c *Client) setError(args ...any) *Client {
 	}
 }
 
+func (c *Client) urlFor(r *wire.Request) string {
+	if r == nil {
+		return c.Url
+	}
+	return r.Url(c.Url)
+}
+
+
 func (c *Client) Invoke(name string, args any) *Client {
 	if c.Err != nil {
 		return c
 	} else if c.Message == nil || c.Url == "" {
-		return c.setError("No url opened")
+		return c.setErrorText("No url opened")
 	}
 	return c.Fetch(name).Call(args)
 }
@@ -76,10 +85,10 @@ func (c *Client) Call(args any) *Client {
 	if c.Err != nil {
 		return c
 	} else if c.Message == nil || c.Url == "" {
-		return c.setError("No url opened")
+		return c.setErrorText("No url opened")
 	}
 
-	request := c.Message.Call(args)
+	request := c.Message.Call(args, c.Url)
 	return c.Request(request)
 
 }
@@ -88,7 +97,7 @@ func (c *Client) Fetch(path string) *Client {
 	if c.Err != nil {
 		return c
 	} else if c.Message == nil || c.Url == "" {
-		return c.setError("No url opened")
+		return c.setErrorText("No url opened")
 	}
 	if c.Cache != nil {
 		if client, ok := c.Cache[path]; ok {
@@ -100,8 +109,6 @@ func (c *Client) Fetch(path string) *Client {
 	// for parts in name.split ":"
 	//	req = c.Message.Fetch(name)
 	//	client = c.Request(req)
-
-	fmt.Println("Cached", c.Cache)
 
 	segments := strings.Split(path, ":")
 	prefix := ""
@@ -115,12 +122,12 @@ func (c *Client) Fetch(path string) *Client {
 
 		fmt.Println("Non Cached Fetch:", path, "getting", prefix)
 
-		request := client.Message.Fetch(name)
+		request := client.Message.Fetch(name, client.Url)
 
 		fmt.Println("Request:", prefix, request)
 
 		if request == nil {
-			client = c.setError("can't fetch:", name)
+			client = c.setErrorText("can't fetch:", name)
 		} else {
 			client = c.Request(request)
 
@@ -162,18 +169,6 @@ func (c *Client) Request(r *wire.Request) *Client {
 	}
 	return client
 
-}
-
-func (c *Client) urlFor(r *wire.Request) string {
-	if r == nil {
-		return c.Url
-	}
-	if c.Url == "" {
-		return r.Path
-	}
-
-	url, _ := neturl.JoinPath(c.Url, r.Path)
-	return url
 }
 
 func (c *Client) Scan(out any) *Client {

@@ -30,24 +30,25 @@ var Example = &Namespace{
 
 type Request struct {
 	Action string // adverb: get, call, list
-	Url    string
-	Path   string
+	Base   string
+	Relative   string
 	Params map[string]string
 	Args   any
 	Cached Message
 }
 
-func (r *Request) Resolve(base string) {
-	if r.Url == "" {
-		r.Url = base + ":" + r.Path
-	} 
+func (r *Request) Url(base string) string {
+	if r.Base != "" {
+		base = r.Base
+	}
+	return base + ":" + r.Relative
 }
 
 type Message interface {
 	Routes() []string
-	Fetch(name string) *Request
+	Fetch(name string, base string) *Request
 
-	Call(args any) *Request
+	Call(args any, base string) *Request
 }
 
 
@@ -108,11 +109,11 @@ func (b *CommonMessage) Routes() []string {
 	return []string{}
 }
 
-func (b *CommonMessage) Fetch(name string) *Request {
+func (b *CommonMessage) Fetch(name string, base string) *Request {
 	return nil
 }
 
-func (b *CommonMessage) Call(args any) *Request {
+func (b *CommonMessage) Call(args any, base string) *Request {
 	return nil
 }
 
@@ -133,15 +134,17 @@ func (n *Namespace) Routes() []string {
 	return n.Names
 }
 
-func (n *Namespace) Fetch(name string) *Request {
+func (n *Namespace) Fetch(name string, base string) *Request {
 	request := &Request{
 		Action: "get",
+		Base: base,
+
 	}
 	url, ok := n.Urls[name]
 	if ok {
-		request.Path = url
+		request.Relative = url
 	} else {
-		request.Path = name + "/"
+		request.Relative = name + "/"
 	}
 
 	message, ok := n.Embeds[name]
@@ -164,17 +167,18 @@ func (s *Service) Routes() []string {
 	return s.Methods
 }
 
-func (s *Service) Fetch(name string) *Request {
+func (s *Service) Fetch(name string, base string) *Request {
 	request := &Request{
 		Action: "get",
+		Base: base,
 		Params: s.Params,
 
 	}
 	url, ok := s.Urls[name]
 	if ok {
-		request.Path = url
+		request.Relative = url
 	} else {
-		request.Path = name 
+		request.Relative = name 
 	}
 
 	message, ok := s.Embeds[name]
@@ -193,10 +197,11 @@ type Procedure struct {
 	Arguments []string
 	Result    Envelope
 }
-func (p *Procedure) Call(args any) *Request {
+func (p *Procedure) Call(args any, base string) *Request {
 	request := &Request{
 		Action: "call",
-		Path: "",
+		Base: base,
+		Relative: "",
 		Params: p.Params,
 		Args: args,
 		Cached: p.Result.Msg,
