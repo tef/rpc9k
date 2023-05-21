@@ -31,7 +31,7 @@ var Example = &Namespace{
 type Request struct {
 	Action string // adverb: get, call, list
 	Path   string
-	State  any
+	Params any
 	Args   any
 	Cached Message
 }
@@ -148,18 +148,54 @@ func (n *Namespace) Fetch(name string) *Request {
 
 type Service struct {
 	CommonMessage
-	State   map[string]string
+	Params  map[string]string
 	Methods []string
 	Urls    map[string]string
 	Embeds  map[string]Envelope
 }
+func (s *Service) Routes() []string {
+	return s.Methods
+}
+
+func (s *Service) Fetch(name string) *Request {
+	request := &Request{
+		Action: "get",
+		Params: s.Params,
+
+	}
+	url, ok := s.Urls[name]
+	if ok {
+		request.Path = url
+	} else {
+		request.Path = name 
+	}
+
+	message, ok := s.Embeds[name]
+
+	if ok {
+		request.Cached = message.M
+	}
+
+	return request
+}
+
 
 type Procedure struct {
 	CommonMessage
-	State     map[string]string
+	Params  map[string]string
 	Arguments []string
 	Result    Message
 }
+func (p *Procedure) Call(args any) *Request {
+	request := &Request{
+		Action: "call",
+		Path: "",
+		Params: p.Params,
+		Args: args,
+	}
+	return request
+}
+
 
 type JSON struct {
 	CommonMessage
