@@ -14,7 +14,7 @@ var Root = &Namespace{
 	Names: []string{"Example"},
 	Urls:  map[string]string{},
 	Embeds: map[string]Envelope{
-		"Example": Envelope{M: Example},
+		"Example": Envelope{Msg: Example},
 	},
 }
 
@@ -30,10 +30,17 @@ var Example = &Namespace{
 
 type Request struct {
 	Action string // adverb: get, call, list
+	Url    string
 	Path   string
-	Params any
+	Params map[string]string
 	Args   any
 	Cached Message
+}
+
+func (r *Request) Resolve(base string) {
+	if r.Url == "" {
+		r.Url = base + ":" + r.Path
+	} 
 }
 
 type Message interface {
@@ -55,7 +62,7 @@ type Message interface {
 // decode to json
 
 type Envelope struct {
-	M Message
+	Msg Message
 }
 
 func (e *Envelope) UnmarshalJSON(bytes []byte) error {
@@ -68,12 +75,12 @@ func (e *Envelope) UnmarshalJSON(bytes []byte) error {
 	if !ok {
 		return errors.New("Unknown message: "+ M.Kind)
 	}
-	e.M = builder()
-	return json.Unmarshal(bytes, e.M)
+	e.Msg = builder()
+	return json.Unmarshal(bytes, e.Msg)
 }
 
 func (e Envelope) MarshalJSON() ([]byte, error) {
-	return json.Marshal(e.M)
+	return json.Marshal(e.Msg)
 }
 
 type MessageBuilder func() Message
@@ -140,7 +147,7 @@ func (n *Namespace) Fetch(name string) *Request {
 	message, ok := n.Embeds[name]
 
 	if ok {
-		request.Cached = message.M
+		request.Cached = message.Msg
 	}
 
 	return request
@@ -173,7 +180,7 @@ func (s *Service) Fetch(name string) *Request {
 	message, ok := s.Embeds[name]
 
 	if ok {
-		request.Cached = message.M
+		request.Cached = message.Msg
 	}
 
 	return request
@@ -184,7 +191,7 @@ type Procedure struct {
 	CommonMessage
 	Params  map[string]string
 	Arguments []string
-	Result    Message
+	Result    Envelope
 }
 func (p *Procedure) Call(args any) *Request {
 	request := &Request{
@@ -192,6 +199,7 @@ func (p *Procedure) Call(args any) *Request {
 		Path: "",
 		Params: p.Params,
 		Args: args,
+		Cached: p.Result.Msg,
 	}
 	return request
 }

@@ -142,7 +142,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 	if r != nil && r.Cached != nil {
 		client := &Client{
 			Message: r.Cached,
-			Url:     c.joinUrl(r),
+			Url:     c.urlFor(r),
 			Options: c.Options,
 			Err:     nil,
 		}
@@ -156,7 +156,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 	client := &Client{
 		Message: wire.Root,
-		Url:     c.joinUrl(r),
+		Url:     c.urlFor(r),
 		Options: c.Options,
 		Err:     nil,
 	}
@@ -164,7 +164,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 }
 
-func (c *Client) joinUrl(r *wire.Request) string {
+func (c *Client) urlFor(r *wire.Request) string {
 	if r == nil {
 		return c.Url
 	}

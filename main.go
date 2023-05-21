@@ -62,7 +62,7 @@ func main() {
 
 	fmt.Println(wire.Root)
 
-	envelope := wire.Envelope{M: wire.Root}
+	envelope := wire.Envelope{Msg: wire.Root}
 
 	b, err := json.Marshal(envelope)
 
@@ -79,6 +79,6 @@ func main() {
 	if err != nil {
 		fmt.Println("err", err)
 	} else {
-		fmt.Println("envelope", envelope2.M)
+		fmt.Println("envelope", envelope2.Msg)
 	}
 }
