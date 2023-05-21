@@ -79,7 +79,10 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 type MessageBuilder func() Message
 
 var Messages = map[string]MessageBuilder {
-	"Namespace": func() Message {return &Namespace{CommonMessage: CommonMessage{Kind: "Namespace"}}},
+	"Namespace": func() Message { return &Namespace{} },
+	"Service": func() Message { return &Service{} },
+	"Procedure": func() Message { return &Namespace{} },
+
 }
 
 type Metadata struct {
@@ -161,4 +164,9 @@ type Procedure struct {
 type JSON struct {
 	CommonMessage
 	Value *json.RawMessage
+}
+
+type Value struct {
+	CommonMessage
+	Value Message
 }

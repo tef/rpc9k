@@ -46,9 +46,18 @@ func Dial(rawUrl string, options any) *Client {
 	return client
 }
 
-func (c *Client) addError(err error) *Client {
+func (c *Client) setErr(err error) *Client {
 	return &Client{
 		Message: &wire.Error{Id: "error", Text: err.Error()},
+		Options: c.Options,
+		Err:     err,
+	}
+}
+func (c *Client) setError(args ...any) *Client {
+	text := fmt.Sprintln(args...)
+	err := errors.New(text)
+	return &Client{
+		Message: &wire.Error{Id: "error", Text: text},
 		Options: c.Options,
 		Err:     err,
 	}
@@ -58,7 +67,7 @@ func (c *Client) Invoke(name string, args any) *Client {
 	if c.Err != nil {
 		return c
 	} else if c.Message == nil || c.Url == "" {
-		return c.addError(errors.New("No url opened"))
+		return c.setError("No url opened")
 	}
 	return c.Fetch(name).Call(args)
 }
@@ -67,7 +76,7 @@ func (c *Client) Call(args any) *Client {
 	if c.Err != nil {
 		return c
 	} else if c.Message == nil || c.Url == "" {
-		return c.addError(errors.New("No url opened"))
+		return c.setError("No url opened")
 	}
 
 	request := c.Message.Call(args)
@@ -79,7 +88,7 @@ func (c *Client) Fetch(path string) *Client {
 	if c.Err != nil {
 		return c
 	} else if c.Message == nil || c.Url == "" {
-		return c.addError(errors.New("No url opened"))
+		return c.setError("No url opened")
 	}
 	if c.Cache != nil {
 		if client, ok := c.Cache[path]; ok {
@@ -111,7 +120,7 @@ func (c *Client) Fetch(path string) *Client {
 		fmt.Println("Request:", prefix, request)
 
 		if request == nil {
-			client = c.addError(errors.New("can't fetch " + name))
+			client = c.setError("can't fetch:", name)
 		} else {
 			client = c.Request(request)
 
