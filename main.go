@@ -18,10 +18,13 @@ func main() {
 		return
 	}
 
-	fmt.Println("fetched", c2.Fetch("Example"))
+	fmt.Println("fetched", c2.Fetch("Example").Url)
+
+	fmt.Println("====")
+
 	fmt.Println("begin dial")
 
-	c := client.Dial("/url/", &client.Auth{Name: "n", Token: "t"})
+	c := client.Dial("/", &client.Auth{Name: "n", Token: "t"})
 	if c.Err != nil {
 		fmt.Println("err:", c.Err)
 		return
@@ -59,6 +62,8 @@ func main() {
 	fmt.Println("Output", Output)
 
 	fmt.Println("end")
+
+	fmt.Println("====")
 
 	fmt.Println(wire.Root)
 

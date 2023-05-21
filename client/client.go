@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	//neturl "net/url"
@@ -100,7 +101,7 @@ func (c *Client) Fetch(path string) *Client {
 	}
 	if c.Cache != nil {
 		if client, ok := c.Cache[path]; ok {
-			fmt.Println("Cached Fetch:", path)
+			// fmt.Println("Cached Fetch:", path)
 			return client
 		}
 	}
@@ -119,11 +120,11 @@ func (c *Client) Fetch(path string) *Client {
 			prefix += ":" + name
 		}
 
-		fmt.Println("Non Cached Fetch:", path, "getting", prefix)
+		// fmt.Println("Non Cached Fetch:", path, "getting", prefix)
 
 		request := client.Message.Fetch(name, client.Url)
 
-		fmt.Println("Request:", prefix, request)
+		// fmt.Println("Request:", prefix, request)
 
 		if request == nil {
 			client = c.setErrorText("can't fetch:", name)
@@ -132,7 +133,7 @@ func (c *Client) Fetch(path string) *Client {
 
 			if client.Err == nil && c.Cache != nil {
 				c.Cache[prefix] = client
-				fmt.Println("Add Cached", c.Cache)
+				// fmt.Println("Add Cached", c.Cache)
 			}
 		}
 	}
@@ -145,10 +146,12 @@ func (c *Client) Request(r *wire.Request) *Client {
 		return c
 	}
 
+	url := c.urlFor(r)
+
 	if r != nil && r.Cached != nil {
 		client := &Client{
 			Message: r.Cached,
-			Url:     c.urlFor(r),
+			Url:     url,
 			Options: c.Options,
 			Err:     nil,
 		}
@@ -160,11 +163,13 @@ func (c *Client) Request(r *wire.Request) *Client {
 	// if json, wrap in Result
 	// if 9k type, bring it up
 
+	output, err := wire.FakeServer(url, r)
+
 	client := &Client{
-		Message: wire.Root,
-		Url:     c.urlFor(r),
+		Message: output,
+		Url:     url,
 		Options: c.Options,
-		Err:     nil,
+		Err:     err,
 	}
 	return client
 
@@ -173,6 +178,17 @@ func (c *Client) Request(r *wire.Request) *Client {
 func (c *Client) Scan(out any) *Client {
 	if c.Err != nil {
 		return c
+	}
+
+	m, ok := c.Message.(*wire.JSON)
+	if ok {
+		err := json.Unmarshal(m.Value, out)
+		if err != nil {
+			return c.setErr(err)
+		}
+		return c
+	} else {
+		return c.setErrorText("Can't Scan, not JSON")
 	}
 
 	return c

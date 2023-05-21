@@ -3,6 +3,7 @@ package wire
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	neturl "net/url"
 	"time"
 )
@@ -26,8 +27,44 @@ var Example = &Service{
 	},
 	Methods: []string{"rpc"},
 	Urls:    map[string]string{},
-	Embeds:  map[string]Envelope{},
+	Embeds:  map[string]Envelope{
+		"rpc": Envelope{Msg: rpc},
+	},
 }
+
+var rpc = &Procedure{
+	CommonMessage: CommonMessage{
+		Kind:       "Service",
+		ApiVersion: "0",
+	},
+	Arguments: []string{"x", "y"},
+}
+
+func FakeServer(url string, r *Request) (Message, error) {
+	fmt.Println("serving", r.Action, url)
+
+	if r.Action == "get" {
+		if url == "/" {
+			return Root, nil
+		} else if url == "/Example/" {
+			return Example, nil
+		} else if url == "/Example/rpc" {
+			return rpc, nil 
+		}
+	} 
+	
+	if r.Action == "post" {
+		if url == "/Example/rpc" {
+			buf := []byte("{\"A\": 1, \"B\":2}")
+			return &JSON{Value: buf}, nil
+		}
+	}
+
+	return nil, errors.New("no")
+
+
+}
+	
 
 type Request struct {
 	Action   string // adverb: get, call, list
@@ -204,7 +241,7 @@ type Procedure struct {
 
 func (p *Procedure) Call(args any, base string) *Request {
 	request := &Request{
-		Action:   "call",
+		Action:   "post",
 		Base:     base,
 		Relative: "",
 		Params:   p.Params,
@@ -216,10 +253,11 @@ func (p *Procedure) Call(args any, base string) *Request {
 
 type JSON struct {
 	CommonMessage
-	Value *json.RawMessage
+	Value json.RawMessage
 }
 
 type Value struct {
 	CommonMessage
-	Value Message
+	Value any
 }
+
