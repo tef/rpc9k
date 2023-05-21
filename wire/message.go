@@ -3,6 +3,7 @@ package wire
 import (
 	"encoding/json"
 	"errors"
+	neturl "net/url"
 	"time"
 )
 
@@ -18,30 +19,35 @@ var Root = &Namespace{
 	},
 }
 
-var Example = &Namespace{
+var Example = &Service{
 	CommonMessage: CommonMessage{
-		Kind:       "Namespace",
+		Kind:       "Service",
 		ApiVersion: "0",
 	},
-	Names:  []string{"rpc"},
-	Urls:   map[string]string{},
-	Embeds: map[string]Envelope{},
+	Methods: []string{"rpc"},
+	Urls:    map[string]string{},
+	Embeds:  map[string]Envelope{},
 }
 
 type Request struct {
-	Action string // adverb: get, call, list
-	Base   string
-	Relative   string
-	Params map[string]string
-	Args   any
-	Cached Message
+	Action   string // adverb: get, call, list
+	Base     string
+	Relative string
+	Params   map[string]string
+	Args     any
+	Cached   Message
 }
 
 func (r *Request) Url(base string) string {
 	if r.Base != "" {
 		base = r.Base
 	}
-	return base + ":" + r.Relative
+	if r.Relative != "" {
+		url, _ := neturl.JoinPath(base, r.Relative)
+		return url
+	} else {
+		return base
+	}
 }
 
 type Message interface {
@@ -50,7 +56,6 @@ type Message interface {
 
 	Call(args any, base string) *Request
 }
-
 
 // Can't use Message as a struct member when said struct
 // gets converted to and from json, encoder doesn't know
@@ -70,11 +75,13 @@ func (e *Envelope) UnmarshalJSON(bytes []byte) error {
 	var M CommonMessage
 
 	err := json.Unmarshal(bytes, &M)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	builder, ok := Messages[M.Kind]
 	if !ok {
-		return errors.New("Unknown message: "+ M.Kind)
+		return errors.New("Unknown message: " + M.Kind)
 	}
 	e.Msg = builder()
 	return json.Unmarshal(bytes, e.Msg)
@@ -86,11 +93,10 @@ func (e Envelope) MarshalJSON() ([]byte, error) {
 
 type MessageBuilder func() Message
 
-var Messages = map[string]MessageBuilder {
+var Messages = map[string]MessageBuilder{
 	"Namespace": func() Message { return &Namespace{} },
-	"Service": func() Message { return &Service{} },
+	"Service":   func() Message { return &Service{} },
 	"Procedure": func() Message { return &Namespace{} },
-
 }
 
 type Metadata struct {
@@ -137,8 +143,7 @@ func (n *Namespace) Routes() []string {
 func (n *Namespace) Fetch(name string, base string) *Request {
 	request := &Request{
 		Action: "get",
-		Base: base,
-
+		Base:   base,
 	}
 	url, ok := n.Urls[name]
 	if ok {
@@ -163,6 +168,7 @@ type Service struct {
 	Urls    map[string]string
 	Embeds  map[string]Envelope
 }
+
 func (s *Service) Routes() []string {
 	return s.Methods
 }
@@ -170,15 +176,14 @@ func (s *Service) Routes() []string {
 func (s *Service) Fetch(name string, base string) *Request {
 	request := &Request{
 		Action: "get",
-		Base: base,
+		Base:   base,
 		Params: s.Params,
-
 	}
 	url, ok := s.Urls[name]
 	if ok {
 		request.Relative = url
 	} else {
-		request.Relative = name 
+		request.Relative = name
 	}
 
 	message, ok := s.Embeds[name]
@@ -190,25 +195,24 @@ func (s *Service) Fetch(name string, base string) *Request {
 	return request
 }
 
-
 type Procedure struct {
 	CommonMessage
-	Params  map[string]string
+	Params    map[string]string
 	Arguments []string
 	Result    Envelope
 }
+
 func (p *Procedure) Call(args any, base string) *Request {
 	request := &Request{
-		Action: "call",
-		Base: base,
+		Action:   "call",
+		Base:     base,
 		Relative: "",
-		Params: p.Params,
-		Args: args,
-		Cached: p.Result.Msg,
+		Params:   p.Params,
+		Args:     args,
+		Cached:   p.Result.Msg,
 	}
 	return request
 }
-
 
 type JSON struct {
 	CommonMessage

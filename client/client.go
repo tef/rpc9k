@@ -71,7 +71,6 @@ func (c *Client) urlFor(r *wire.Request) string {
 	return r.Url(c.Url)
 }
 
-
 func (c *Client) Invoke(name string, args any) *Client {
 	if c.Err != nil {
 		return c
