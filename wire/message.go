@@ -27,7 +27,7 @@ var Example = &Service{
 	},
 	Methods: []string{"rpc"},
 	Urls:    map[string]string{},
-	Embeds:  map[string]Envelope{
+	Embeds: map[string]Envelope{
 		"rpc": Envelope{Msg: rpc},
 	},
 }
@@ -40,31 +40,42 @@ var rpc = &Procedure{
 	Arguments: []string{"x", "y"},
 }
 
-func FakeServer(url string, r *Request) (Message, error) {
-	fmt.Println("serving", r.Action, url)
+func FakeServer(Action string, url string, content_type string, buf []byte) (Message, error) {
+	fmt.Println("serving", Action, url)
 
-	if r.Action == "get" {
+	if Action == "get" {
 		if url == "/" {
 			return Root, nil
 		} else if url == "/Example/" {
 			return Example, nil
 		} else if url == "/Example/rpc" {
-			return rpc, nil 
+			return rpc, nil
 		}
-	} 
-	
-	if r.Action == "post" {
+	}
+
+	if Action == "post" {
 		if url == "/Example/rpc" {
-			buf := []byte("{\"A\": 1, \"B\":2}")
-			return &JSON{Value: buf}, nil
+			var output any
+			err := json.Unmarshal(buf, &output)
+			if err != nil {
+				return nil, err
+			}
+			fmt.Println("Got", output)
+
+			reply, err := json.Marshal(output)
+
+			if err != nil {
+				fmt.Println("RT", err)
+				return nil, err
+			}
+
+			return &JSON{Value: reply}, nil
 		}
 	}
 
 	return nil, errors.New("no")
 
-
 }
-	
 
 type Request struct {
 	Action   string // adverb: get, call, list
@@ -73,6 +84,13 @@ type Request struct {
 	Params   map[string]string
 	Args     any
 	Cached   Message
+}
+
+func (r *Request) Body() (string, []byte, error) {
+	content_type := "application/json"
+
+	bytes, err := json.Marshal(r.Args)
+	return content_type, bytes, err
 }
 
 func (r *Request) Url(base string) string {
@@ -163,6 +181,7 @@ func (b *CommonMessage) Call(args any, base string) *Request {
 func (b *CommonMessage) Scan(args any) error {
 	return errors.New("no value")
 }
+
 type Namespace struct {
 	CommonMessage
 	Names  []string            `json:"Names"`
@@ -260,7 +279,7 @@ func (m *JSON) Scan(out any) error {
 type Blob struct {
 	CommonMessage
 	ContentType string
-	Value []byte
+	Value       []byte
 }
 
 type Value struct {

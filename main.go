@@ -32,10 +32,7 @@ func main() {
 
 	fmt.Println("dialed", c)
 
-	var Output struct {
-		A int
-		B int
-	}
+	var Output []int
 
 	reply := c.Invoke("Example:rpc", []int{1, 2, 3}).Scan(&Output)
 

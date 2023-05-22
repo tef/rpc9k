@@ -46,7 +46,7 @@ func Dial(rawUrl string, options any) *Client {
 	return client
 }
 
-func (c *Client) setErr(err error) *Client {
+func (c *Client) withErr(err error) *Client {
 	return &Client{
 		Message: &wire.Error{Id: "error", Text: err.Error()},
 		Options: c.Options,
@@ -54,7 +54,7 @@ func (c *Client) setErr(err error) *Client {
 	}
 }
 
-func (c *Client) setErrorText(args ...any) *Client {
+func (c *Client) withNewError(args ...any) *Client {
 	text := fmt.Sprintln(args...)
 	err := errors.New(text)
 	return &Client{
@@ -75,7 +75,7 @@ func (c *Client) Invoke(name string, args any) *Client {
 	if c.Err != nil {
 		return c
 	} else if c.Message == nil || c.Url == "" {
-		return c.setErrorText("No url opened")
+		return c.withNewError("No url opened")
 	}
 	return c.Fetch(name).Call(args)
 }
@@ -84,7 +84,7 @@ func (c *Client) Call(args any) *Client {
 	if c.Err != nil {
 		return c
 	} else if c.Message == nil || c.Url == "" {
-		return c.setErrorText("No url opened")
+		return c.withNewError("No url opened")
 	}
 
 	request := c.Message.Call(args, c.Url)
@@ -96,7 +96,7 @@ func (c *Client) Fetch(path string) *Client {
 	if c.Err != nil {
 		return c
 	} else if c.Message == nil || c.Url == "" {
-		return c.setErrorText("No url opened")
+		return c.withNewError("No url opened")
 	}
 	if c.Cache != nil {
 		if client, ok := c.Cache[path]; ok {
@@ -126,7 +126,7 @@ func (c *Client) Fetch(path string) *Client {
 		// fmt.Println("Request:", prefix, request)
 
 		if request == nil {
-			client = c.setErrorText("can't fetch:", name)
+			client = c.withNewError("can't fetch:", name)
 		} else {
 			client = c.Request(request)
 
@@ -146,7 +146,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 	}
 
 	if r == nil {
-		c.setErrorText("empty (nil) request")
+		c.withNewError("empty (nil) request")
 	}
 
 	url := c.urlFor(r)
@@ -166,13 +166,21 @@ func (c *Client) Request(r *wire.Request) *Client {
 	// if json, wrap in Result
 	// if 9k type, bring it up
 
-	output, err := wire.FakeServer(url, r)
+	content_type, payload, err := r.Body()
+	if err != nil {
+		return c.withErr(err)
+	}
+
+	output, err := wire.FakeServer(r.Action, url, content_type, payload)
+
+	if err != nil {
+		return c.withErr(err)
+	}
 
 	client := &Client{
 		Message: output,
 		Url:     url,
 		Options: c.Options,
-		Err:     err,
 	}
 	return client
 
@@ -185,7 +193,7 @@ func (c *Client) Scan(out any) *Client {
 
 	err := c.Message.Scan(out)
 	if err != nil {
-		return c.setErr(err)
+		return c.withErr(err)
 	}
 	return c
 }
