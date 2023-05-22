@@ -65,16 +65,14 @@ func main() {
 
 	fmt.Println("====")
 
-	fmt.Println(wire.Root)
-
-	envelope := wire.Envelope{Msg: wire.Root}
+	envelope := wire.Envelope{Msg: wire.Example}
 
 	b, err := json.Marshal(envelope)
 
 	if err != nil {
 		fmt.Println("err", err)
 	} else {
-		fmt.Println("envelope", string(b))
+		fmt.Println("envelope json", string(b))
 	}
 
 	var envelope2 wire.Envelope
@@ -84,6 +82,6 @@ func main() {
 	if err != nil {
 		fmt.Println("err", err)
 	} else {
-		fmt.Println("envelope", envelope2.Msg)
+		fmt.Println("envelope contents", envelope2.Msg)
 	}
 }

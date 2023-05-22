@@ -163,12 +163,6 @@ func (b *CommonMessage) Call(args any, base string) *Request {
 func (b *CommonMessage) Scan(args any) error {
 	return errors.New("no value")
 }
-type Error struct {
-	CommonMessage
-	Id   string
-	Text string
-}
-
 type Namespace struct {
 	CommonMessage
 	Names  []string            `json:"Names"`
@@ -263,8 +257,24 @@ func (m *JSON) Scan(out any) error {
 	return json.Unmarshal(m.Value, out)
 }
 
+type Blob struct {
+	CommonMessage
+	ContentType string
+	Value []byte
+}
+
 type Value struct {
 	CommonMessage
 	Value any
 }
+type Empty struct { // HTTP 203
+	CommonMessage
+}
 
+type Error struct {
+	CommonMessage
+	Id   string
+	Text string
+}
+
+// ClientError? ServerError

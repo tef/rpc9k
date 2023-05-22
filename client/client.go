@@ -145,9 +145,13 @@ func (c *Client) Request(r *wire.Request) *Client {
 		return c
 	}
 
+	if r == nil {
+		c.setErrorText("empty (nil) request")
+	}
+
 	url := c.urlFor(r)
 
-	if r != nil && r.Cached != nil {
+	if r.Cached != nil {
 		client := &Client{
 			Message: r.Cached,
 			Url:     url,
