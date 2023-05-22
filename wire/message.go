@@ -87,13 +87,6 @@ func (r *Request) Url(base string) string {
 	}
 }
 
-type Message interface {
-	Routes() []string
-	Fetch(name string, base string) *Request
-
-	Call(args any, base string) *Request
-}
-
 // Can't use Message as a struct member when said struct
 // gets converted to and from json, encoder doesn't know
 // how to turn JSON into a given interface, and we can't
@@ -103,6 +96,13 @@ type Message interface {
 // we have a container struct that contains one field,
 // a message, and the container knows how to encode or
 // decode to json
+
+type Message interface {
+	Routes() []string
+	Fetch(name string, base string) *Request
+	Call(args any, base string) *Request
+	Scan(args any) error
+}
 
 type Envelope struct {
 	Msg Message
@@ -160,6 +160,9 @@ func (b *CommonMessage) Call(args any, base string) *Request {
 	return nil
 }
 
+func (b *CommonMessage) Scan(args any) error {
+	return errors.New("no value")
+}
 type Error struct {
 	CommonMessage
 	Id   string
@@ -254,6 +257,10 @@ func (p *Procedure) Call(args any, base string) *Request {
 type JSON struct {
 	CommonMessage
 	Value json.RawMessage
+}
+
+func (m *JSON) Scan(out any) error {
+	return json.Unmarshal(m.Value, out)
 }
 
 type Value struct {

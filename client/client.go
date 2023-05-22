@@ -1,7 +1,6 @@
 package client
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	//neturl "net/url"
@@ -180,16 +179,9 @@ func (c *Client) Scan(out any) *Client {
 		return c
 	}
 
-	m, ok := c.Message.(*wire.JSON)
-	if ok {
-		err := json.Unmarshal(m.Value, out)
-		if err != nil {
-			return c.setErr(err)
-		}
-		return c
-	} else {
-		return c.setErrorText("Can't Scan, not JSON")
+	err := c.Message.Scan(out)
+	if err != nil {
+		return c.setErr(err)
 	}
-
 	return c
 }
