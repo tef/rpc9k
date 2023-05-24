@@ -104,10 +104,6 @@ func (c *Client) Fetch(path string) *Client {
 			return client
 		}
 	}
-	// var client = c
-	// for parts in name.split ":"
-	//	req = c.Message.Fetch(name)
-	//	client = c.Request(req)
 
 	segments := strings.Split(path, ":")
 	prefix := ""
@@ -171,14 +167,16 @@ func (c *Client) Request(r *wire.Request) *Client {
 		return c.withErr(err)
 	}
 
-	output, err := wire.FakeServer(r.Action, url, content_type, payload)
+	envelope, err := wire.FakeServer(r.Action, url, content_type, payload)
 
 	if err != nil {
 		return c.withErr(err)
 	}
 
+	fmt.Println("Envelope reply:", envelope.Kind)
+
 	client := &Client{
-		Message: output,
+		Message: envelope.Msg,
 		Url:     url,
 		Options: c.Options,
 	}

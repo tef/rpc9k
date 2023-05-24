@@ -16,7 +16,7 @@ var Root = &Namespace{
 	Names: []string{"Example"},
 	Urls:  map[string]string{},
 	Embeds: map[string]Envelope{
-		"Example": Envelope{Msg: Example},
+	//	"Example": Envelope{Msg: Example},
 	},
 }
 
@@ -28,7 +28,7 @@ var Example = &Service{
 	Methods: []string{"rpc"},
 	Urls:    map[string]string{},
 	Embeds: map[string]Envelope{
-		"rpc": Envelope{Msg: rpc},
+	//	"rpc": Envelope{Msg: rpc},
 	},
 }
 
@@ -40,16 +40,16 @@ var rpc = &Procedure{
 	Arguments: []string{"x", "y"},
 }
 
-func FakeServer(Action string, url string, content_type string, buf []byte) (Message, error) {
+func FakeServer(Action string, url string, content_type string, buf []byte) (*Envelope, error) {
 	fmt.Println("serving", Action, url)
 
 	if Action == "get" {
 		if url == "/" {
-			return Root, nil
+			return &Envelope{Kind:"Namespace", Msg:Root}, nil
 		} else if url == "/Example/" {
-			return Example, nil
+			return &Envelope{Kind:"Service", Msg:Example}, nil
 		} else if url == "/Example/rpc" {
-			return rpc, nil
+			return &Envelope{Kind:"Procedure", Msg:rpc}, nil
 		}
 	}
 
@@ -69,7 +69,7 @@ func FakeServer(Action string, url string, content_type string, buf []byte) (Mes
 				return nil, err
 			}
 
-			return &JSON{Value: reply}, nil
+			return &Envelope{Kind:"JSON", Msg:&JSON{Value: reply}}, nil
 		}
 	}
 
@@ -87,6 +87,9 @@ type Request struct {
 }
 
 func (r *Request) Body() (string, []byte, error) {
+	if r.Args == nil {
+		return "", nil, nil
+	}
 	content_type := "application/json"
 
 	bytes, err := json.Marshal(r.Args)
@@ -123,6 +126,7 @@ type Message interface {
 }
 
 type Envelope struct {
+	Kind string
 	Msg Message
 }
 
@@ -138,6 +142,7 @@ func (e *Envelope) UnmarshalJSON(bytes []byte) error {
 	if !ok {
 		return errors.New("Unknown message: " + M.Kind)
 	}
+	e.Kind = M.Kind
 	e.Msg = builder()
 	return json.Unmarshal(bytes, e.Msg)
 }
