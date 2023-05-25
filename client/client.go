@@ -198,6 +198,20 @@ func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Envelop
 		return url, nil, err
 	}
 
+	if envelope.Kind == "Redirect" {
+		redirect, ok := envelope.Msg.(*wire.Redirect)
+		if ok {
+			url = redirect.Url(url)
+			fmt.Println("fetching redirected", url)
+			_, envelope, err = c.httpRequest(url, r)
+
+			if err != nil {
+				return url, nil, err
+			}
+		}
+
+	}
+
 	return url, envelope, nil
 
 

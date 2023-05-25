@@ -46,6 +46,18 @@ func FakeServer(Action string, url string, content_type string, buf []byte) (*En
 	if Action == "get" {
 		if url == "/" {
 			return &Envelope{Kind:"Namespace", Msg:Root}, nil
+		} else if url == "/Example" {
+			redirect := &Envelope{
+				Kind:"Redirect", 
+				Msg: &Redirect {
+					CommonMessage: CommonMessage{
+						Kind:       "Redirect",
+						ApiVersion: "0",
+					},
+					Target: "/Example/",
+				},
+			}
+			return redirect, nil
 		} else if url == "/Example/" {
 			return &Envelope{Kind:"Service", Msg:Example}, nil
 		} else if url == "/Example/rpc" {
@@ -171,19 +183,19 @@ type CommonMessage struct {
 	Metadata   Metadata `json:"Metadata"`
 }
 
-func (b *CommonMessage) Routes() []string {
+func (b CommonMessage) Routes() []string {
 	return []string{}
 }
 
-func (b *CommonMessage) Fetch(name string, base string) *Request {
+func (b CommonMessage) Fetch(name string, base string) *Request {
 	return nil
 }
 
-func (b *CommonMessage) Call(args any, base string) *Request {
+func (b CommonMessage) Call(args any, base string) *Request {
 	return nil
 }
 
-func (b *CommonMessage) Scan(args any) error {
+func (b CommonMessage) Scan(args any) error {
 	return errors.New("no value")
 }
 
@@ -207,7 +219,7 @@ func (n *Namespace) Fetch(name string, base string) *Request {
 	if ok {
 		request.Relative = url
 	} else {
-		request.Relative = name + "/"
+		request.Relative = name 
 	}
 
 	message, ok := n.Embeds[name]
@@ -294,6 +306,19 @@ type Value struct {
 type Empty struct { // HTTP 203
 	CommonMessage
 }
+type Redirect struct {
+	CommonMessage
+	Target string
+}
+
+func (r *Redirect) Url(base string) string {
+	if r.Target[0] == '/' {
+		return r.Target
+	}
+	url, _ := neturl.JoinPath(base, r.Target)
+	return url
+}
+
 
 type Error struct {
 	CommonMessage
