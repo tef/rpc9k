@@ -81,4 +81,10 @@ func main() {
 	} else {
 		fmt.Println("envelope contents", envelope2.Msg)
 	}
+
+	var ser wire.Service
+
+	envelope2.Unwrap(&ser)
+
+	fmt.Println("Unwrap", ser)
 }

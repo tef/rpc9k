@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	neturl "net/url"
+	"reflect"
 	"time"
 )
 
@@ -140,6 +141,17 @@ type Message interface {
 type Envelope struct {
 	Kind string
 	Msg Message
+}
+
+func (e *Envelope) Unwrap(out any) bool {
+	output := reflect.Indirect(reflect.ValueOf(out))
+	input := reflect.Indirect(reflect.ValueOf(e.Msg))
+	if output.Kind() == input.Kind() {
+		return false
+	}
+
+	output.Set(input)
+	return true
 }
 
 func (e *Envelope) UnmarshalJSON(bytes []byte) error {
@@ -302,6 +314,17 @@ type Blob struct {
 type Value struct {
 	CommonMessage
 	Value any
+}
+
+func (e *Value) Scan(out any) error {
+	output := reflect.Indirect(reflect.ValueOf(out))
+	input := reflect.Indirect(reflect.ValueOf(e.Value))
+	if output.Kind() == input.Kind() {
+		return errors.New("Can't unwrap")
+	}
+
+	output.Set(input)
+	return nil
 }
 type Empty struct { // HTTP 203
 	CommonMessage
