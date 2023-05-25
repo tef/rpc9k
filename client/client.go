@@ -157,22 +157,22 @@ func (c *Client) Request(r *wire.Request) *Client {
 		return client
 	}
 
-	// if reply is a future:
-	// decode args
-	// if json, wrap in Result
-	// if 9k type, bring it up
+	var envelope *wire.Envelope 
+	var err error
 
-	content_type, payload, err := r.Body()
-	if err != nil {
-		return c.withErr(err)
+	for {
+		url, envelope, err = c.httpRequest(url, r)
+		if err != nil {
+			return c.withErr(err)
+		}
+
+		// future handling
+		// don't update url, but fetch next in series
+		// waiting if necessary
+
+		break
 	}
-
-	envelope, err := wire.FakeServer(r.Action, url, content_type, payload)
-
-	if err != nil {
-		return c.withErr(err)
-	}
-
+	
 	fmt.Println("Envelope reply:", envelope.Kind)
 
 	client := &Client{
@@ -181,6 +181,25 @@ func (c *Client) Request(r *wire.Request) *Client {
 		Options: c.Options,
 	}
 	return client
+
+}
+
+func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Envelope, error) {
+
+	content_type, payload, err := r.Body()
+	if err != nil {
+		return url, nil, err
+	}
+
+	envelope, err := wire.FakeServer(r.Action, url, content_type, payload)
+	// redirect handling/ faking
+
+	if err != nil {
+		return url, nil, err
+	}
+
+	return url, envelope, nil
+
 
 }
 
