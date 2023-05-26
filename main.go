@@ -72,7 +72,7 @@ func main() {
 		fmt.Println("envelope json", string(b))
 	}
 
-	var envelope2 wire.Message
+	var envelope2 wire.Envelope
 
 	err = json.Unmarshal(b, &envelope2)
 

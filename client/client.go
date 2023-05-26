@@ -22,7 +22,7 @@ type Client struct {
 	Cache   map[string]*Client
 }
 
-func New(rawUrl string, message *wire.Message, options any) *Client {
+func New(rawUrl string, message *wire.Envelope, options any) *Client {
 	return &Client{
 		Options: options,
 		Url:     rawUrl,
@@ -157,7 +157,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 		return client
 	}
 
-	var envelope *wire.Message 
+	var envelope *wire.Envelope 
 	var err error
 
 	for {
@@ -184,7 +184,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 }
 
-func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Message, error) {
+func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Envelope, error) {
 
 	content_type, payload, err := r.Body()
 	if err != nil {

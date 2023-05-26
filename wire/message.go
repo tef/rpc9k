@@ -16,8 +16,8 @@ var Root = (&Namespace{
 	},
 	Names: []string{"Example"},
 	Urls:  map[string]string{},
-	Embeds: map[string]Message{
-	//	"Example": Message{Msg: Example},
+	Embeds: map[string]Envelope{
+	//	"Example": Envelope{Msg: Example},
 	},
 }).Wrap()
 
@@ -28,8 +28,8 @@ var Example = (&Service{
 	},
 	Methods: []string{"rpc"},
 	Urls:    map[string]string{},
-	Embeds: map[string]Message{
-	//	"rpc": Message{Msg: rpc},
+	Embeds: map[string]Envelope{
+	//	"rpc": Envelope{Msg: rpc},
 	},
 }).Wrap()
 
@@ -41,14 +41,14 @@ var rpc = (&Procedure{
 	Arguments: []string{"x", "y"},
 }).Wrap()
 
-func FakeServer(Action string, url string, content_type string, buf []byte) (*Message, error) {
+func FakeServer(Action string, url string, content_type string, buf []byte) (*Envelope, error) {
 	fmt.Println("serving", Action, url)
 
 	if Action == "get" {
 		if url == "/" {
 			return &Root, nil
 		} else if url == "/Example" {
-			redirect := &Message{
+			redirect := &Envelope{
 				Kind:"Redirect", 
 				Msg: &Redirect {
 					CommonMessage: CommonMessage{
@@ -82,7 +82,7 @@ func FakeServer(Action string, url string, content_type string, buf []byte) (*Me
 				return nil, err
 			}
 
-			return &Message{Kind:"JSON", Msg:&JSON{Value: reply}}, nil
+			return &Envelope{Kind:"JSON", Msg:&JSON{Value: reply}}, nil
 		}
 	}
 
@@ -136,15 +136,15 @@ type WireMessage interface {
 	Fetch(name string, base string) *Request
 	Call(args any, base string) *Request
 	Scan(args any) error
-	Wrap() Message
+	Wrap() Envelope
 }
 
-type Message struct {
+type Envelope struct {
 	Kind string
 	Msg WireMessage
 }
 
-func (e *Message) Unwrap(out WireMessage) bool {
+func (e *Envelope) Unwrap(out WireMessage) bool {
 	output := reflect.Indirect(reflect.ValueOf(out))
 	input := reflect.Indirect(reflect.ValueOf(e.Msg))
 	if output.Kind() == input.Kind() {
@@ -155,7 +155,7 @@ func (e *Message) Unwrap(out WireMessage) bool {
 	return true
 }
 
-func (e *Message) UnmarshalJSON(bytes []byte) error {
+func (e *Envelope) UnmarshalJSON(bytes []byte) error {
 	var M CommonMessage
 
 	err := json.Unmarshal(bytes, &M)
@@ -172,8 +172,28 @@ func (e *Message) UnmarshalJSON(bytes []byte) error {
 	return json.Unmarshal(bytes, e.Msg)
 }
 
-func (e Message) MarshalJSON() ([]byte, error) {
+func (e Envelope) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.Msg)
+}
+
+func (b Envelope) Wrap() Envelope {
+	return b
+}
+
+func (b Envelope) Routes() []string {
+	return b.Msg.Routes()
+}
+
+func (b Envelope) Fetch(name string, base string) *Request {
+	return b.Msg.Fetch(name, base)
+}
+
+func (b Envelope) Call(args any, base string) *Request {
+	return b.Msg.Call(args, base)
+}
+
+func (b Envelope) Scan(args any) error {
+	return b.Msg.Scan(args)
 }
 
 type MessageBuilder func() WireMessage
@@ -216,10 +236,10 @@ type Namespace struct {
 	CommonMessage
 	Names  []string            `json:"Names"`
 	Urls   map[string]string   `json:"Urls"`
-	Embeds map[string]Message `json:"Embeds"`
+	Embeds map[string]Envelope `json:"Embeds"`
 }
-func (n *Namespace) Wrap() Message {
-	return Message{Kind: "Namespace", Msg: n}
+func (n *Namespace) Wrap() Envelope {
+	return Envelope{Kind: "Namespace", Msg: n}
 }
 
 
@@ -253,11 +273,11 @@ type Service struct {
 	Params  map[string]string
 	Methods []string
 	Urls    map[string]string
-	Embeds  map[string]Message
+	Embeds  map[string]Envelope
 }
 
-func (n *Service) Wrap() Message {
-	return Message{Kind: "Service", Msg: n}
+func (n *Service) Wrap() Envelope {
+	return Envelope{Kind: "Service", Msg: n}
 }
 
 func (s *Service) Routes() []string {
@@ -290,10 +310,10 @@ type Procedure struct {
 	CommonMessage
 	Params    map[string]string
 	Arguments []string
-	Result    Message
+	Result    Envelope
 }
-func (n *Procedure) Wrap() Message {
-	return Message{Kind: "Procedure", Msg: n}
+func (n *Procedure) Wrap() Envelope {
+	return Envelope{Kind: "Procedure", Msg: n}
 }
 
 
@@ -313,8 +333,8 @@ type JSON struct {
 	CommonMessage
 	Value json.RawMessage
 }
-func (n *JSON) Wrap() Message {
-	return Message{Kind: "JSON", Msg: n}
+func (n *JSON) Wrap() Envelope {
+	return Envelope{Kind: "JSON", Msg: n}
 }
 
 
@@ -327,8 +347,8 @@ type Blob struct {
 	ContentType string
 	Value       []byte
 }
-func (n *Blob) Wrap() Message {
-	return Message{Kind: "Blob", Msg: n}
+func (n *Blob) Wrap() Envelope {
+	return Envelope{Kind: "Blob", Msg: n}
 }
 
 
@@ -337,8 +357,8 @@ type Value struct {
 	Value any
 }
 
-func (n *Value) Wrap() Message {
-	return Message{Kind: "Value", Msg: n}
+func (n *Value) Wrap() Envelope {
+	return Envelope{Kind: "Value", Msg: n}
 }
 
 func (e *Value) Scan(out any) error {
@@ -355,8 +375,8 @@ func (e *Value) Scan(out any) error {
 type Empty struct { // HTTP 203
 	CommonMessage
 }
-func (n *Empty) Wrap() Message {
-	return Message{Kind: "Empty", Msg: n}
+func (n *Empty) Wrap() Envelope {
+	return Envelope{Kind: "Empty", Msg: n}
 }
 
 
@@ -364,8 +384,8 @@ type Redirect struct {
 	CommonMessage
 	Target string
 }
-func (n *Redirect) Wrap() Message {
-	return Message{Kind: "Redirect", Msg: n}
+func (n *Redirect) Wrap() Envelope {
+	return Envelope{Kind: "Redirect", Msg: n}
 }
 
 
@@ -383,8 +403,8 @@ type Error struct {
 	Id   string
 	Text string
 }
-func (n *Error) Wrap() Message {
-	return Message{Kind: "Error", Msg: n}
+func (n *Error) Wrap() Envelope {
+	return Envelope{Kind: "Error", Msg: n}
 }
 
 
