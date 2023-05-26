@@ -143,7 +143,7 @@ type Envelope struct {
 	Msg Message
 }
 
-func (e *Envelope) Unwrap(out any) bool {
+func (e *Envelope) Unwrap(out Message) bool {
 	output := reflect.Indirect(reflect.ValueOf(out))
 	input := reflect.Indirect(reflect.ValueOf(e.Msg))
 	if output.Kind() == input.Kind() {
