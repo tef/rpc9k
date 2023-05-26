@@ -9,46 +9,46 @@ import (
 	"time"
 )
 
-var Root = &Namespace{
+var Root = (&Namespace{
 	CommonMessage: CommonMessage{
 		Kind:       "Namespace",
 		ApiVersion: "0",
 	},
 	Names: []string{"Example"},
 	Urls:  map[string]string{},
-	Embeds: map[string]Envelope{
-	//	"Example": Envelope{Msg: Example},
+	Embeds: map[string]Message{
+	//	"Example": Message{Msg: Example},
 	},
-}
+}).Wrap()
 
-var Example = &Service{
+var Example = (&Service{
 	CommonMessage: CommonMessage{
 		Kind:       "Service",
 		ApiVersion: "0",
 	},
 	Methods: []string{"rpc"},
 	Urls:    map[string]string{},
-	Embeds: map[string]Envelope{
-	//	"rpc": Envelope{Msg: rpc},
+	Embeds: map[string]Message{
+	//	"rpc": Message{Msg: rpc},
 	},
-}
+}).Wrap()
 
-var rpc = &Procedure{
+var rpc = (&Procedure{
 	CommonMessage: CommonMessage{
 		Kind:       "Service",
 		ApiVersion: "0",
 	},
 	Arguments: []string{"x", "y"},
-}
+}).Wrap()
 
-func FakeServer(Action string, url string, content_type string, buf []byte) (*Envelope, error) {
+func FakeServer(Action string, url string, content_type string, buf []byte) (*Message, error) {
 	fmt.Println("serving", Action, url)
 
 	if Action == "get" {
 		if url == "/" {
-			return &Envelope{Kind:"Namespace", Msg:Root}, nil
+			return &Root, nil
 		} else if url == "/Example" {
-			redirect := &Envelope{
+			redirect := &Message{
 				Kind:"Redirect", 
 				Msg: &Redirect {
 					CommonMessage: CommonMessage{
@@ -60,9 +60,9 @@ func FakeServer(Action string, url string, content_type string, buf []byte) (*En
 			}
 			return redirect, nil
 		} else if url == "/Example/" {
-			return &Envelope{Kind:"Service", Msg:Example}, nil
+			return &Example, nil
 		} else if url == "/Example/rpc" {
-			return &Envelope{Kind:"Procedure", Msg:rpc}, nil
+			return &rpc, nil
 		}
 	}
 
@@ -82,7 +82,7 @@ func FakeServer(Action string, url string, content_type string, buf []byte) (*En
 				return nil, err
 			}
 
-			return &Envelope{Kind:"JSON", Msg:&JSON{Value: reply}}, nil
+			return &Message{Kind:"JSON", Msg:&JSON{Value: reply}}, nil
 		}
 	}
 
@@ -96,7 +96,7 @@ type Request struct {
 	Relative string
 	Params   map[string]string
 	Args     any
-	Cached   Message
+	Cached   WireMessage
 }
 
 func (r *Request) Body() (string, []byte, error) {
@@ -121,29 +121,30 @@ func (r *Request) Url(base string) string {
 	}
 }
 
-// Can't use Message as a struct member when said struct
+// Can't use WireMessage as a struct member when said struct
 // gets converted to and from json, encoder doesn't know
 // how to turn JSON into a given interface, and we can't
-// hook a method onto the Message interface type either.
+// hook a method onto the WireMessage interface type either.
 
 // ... but we can override a struct's behaviour, and so
 // we have a container struct that contains one field,
 // a message, and the container knows how to encode or
 // decode to json
 
-type Message interface {
+type WireMessage interface {
 	Routes() []string
 	Fetch(name string, base string) *Request
 	Call(args any, base string) *Request
 	Scan(args any) error
+	Wrap() Message
 }
 
-type Envelope struct {
+type Message struct {
 	Kind string
-	Msg Message
+	Msg WireMessage
 }
 
-func (e *Envelope) Unwrap(out Message) bool {
+func (e *Message) Unwrap(out WireMessage) bool {
 	output := reflect.Indirect(reflect.ValueOf(out))
 	input := reflect.Indirect(reflect.ValueOf(e.Msg))
 	if output.Kind() == input.Kind() {
@@ -154,7 +155,7 @@ func (e *Envelope) Unwrap(out Message) bool {
 	return true
 }
 
-func (e *Envelope) UnmarshalJSON(bytes []byte) error {
+func (e *Message) UnmarshalJSON(bytes []byte) error {
 	var M CommonMessage
 
 	err := json.Unmarshal(bytes, &M)
@@ -171,16 +172,16 @@ func (e *Envelope) UnmarshalJSON(bytes []byte) error {
 	return json.Unmarshal(bytes, e.Msg)
 }
 
-func (e Envelope) MarshalJSON() ([]byte, error) {
+func (e Message) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.Msg)
 }
 
-type MessageBuilder func() Message
+type MessageBuilder func() WireMessage
 
 var Messages = map[string]MessageBuilder{
-	"Namespace": func() Message { return &Namespace{} },
-	"Service":   func() Message { return &Service{} },
-	"Procedure": func() Message { return &Namespace{} },
+	"Namespace": func() WireMessage { return &Namespace{} },
+	"Service":   func() WireMessage { return &Service{} },
+	"Procedure": func() WireMessage { return &Namespace{} },
 }
 
 type Metadata struct {
@@ -215,8 +216,12 @@ type Namespace struct {
 	CommonMessage
 	Names  []string            `json:"Names"`
 	Urls   map[string]string   `json:"Urls"`
-	Embeds map[string]Envelope `json:"Embeds"`
+	Embeds map[string]Message `json:"Embeds"`
 }
+func (n *Namespace) Wrap() Message {
+	return Message{Kind: "Namespace", Msg: n}
+}
+
 
 func (n *Namespace) Routes() []string {
 	return n.Names
@@ -248,7 +253,11 @@ type Service struct {
 	Params  map[string]string
 	Methods []string
 	Urls    map[string]string
-	Embeds  map[string]Envelope
+	Embeds  map[string]Message
+}
+
+func (n *Service) Wrap() Message {
+	return Message{Kind: "Service", Msg: n}
 }
 
 func (s *Service) Routes() []string {
@@ -281,8 +290,12 @@ type Procedure struct {
 	CommonMessage
 	Params    map[string]string
 	Arguments []string
-	Result    Envelope
+	Result    Message
 }
+func (n *Procedure) Wrap() Message {
+	return Message{Kind: "Procedure", Msg: n}
+}
+
 
 func (p *Procedure) Call(args any, base string) *Request {
 	request := &Request{
@@ -300,6 +313,10 @@ type JSON struct {
 	CommonMessage
 	Value json.RawMessage
 }
+func (n *JSON) Wrap() Message {
+	return Message{Kind: "JSON", Msg: n}
+}
+
 
 func (m *JSON) Scan(out any) error {
 	return json.Unmarshal(m.Value, out)
@@ -310,10 +327,18 @@ type Blob struct {
 	ContentType string
 	Value       []byte
 }
+func (n *Blob) Wrap() Message {
+	return Message{Kind: "Blob", Msg: n}
+}
+
 
 type Value struct {
 	CommonMessage
 	Value any
+}
+
+func (n *Value) Wrap() Message {
+	return Message{Kind: "Value", Msg: n}
 }
 
 func (e *Value) Scan(out any) error {
@@ -326,13 +351,23 @@ func (e *Value) Scan(out any) error {
 	output.Set(input)
 	return nil
 }
+
 type Empty struct { // HTTP 203
 	CommonMessage
 }
+func (n *Empty) Wrap() Message {
+	return Message{Kind: "Empty", Msg: n}
+}
+
+
 type Redirect struct {
 	CommonMessage
 	Target string
 }
+func (n *Redirect) Wrap() Message {
+	return Message{Kind: "Redirect", Msg: n}
+}
+
 
 func (r *Redirect) Url(base string) string {
 	if r.Target[0] == '/' {
@@ -348,5 +383,9 @@ type Error struct {
 	Id   string
 	Text string
 }
+func (n *Error) Wrap() Message {
+	return Message{Kind: "Error", Msg: n}
+}
+
 
 // ClientError? ServerError

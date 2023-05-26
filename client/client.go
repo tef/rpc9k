@@ -17,16 +17,16 @@ type Auth struct {
 type Client struct {
 	Options any
 	Url     string
-	Message wire.Message
+	Message wire.WireMessage
 	Err     error
 	Cache   map[string]*Client
 }
 
-func New(rawUrl string, message wire.Message, options any) *Client {
+func New(rawUrl string, message *wire.Message, options any) *Client {
 	return &Client{
 		Options: options,
 		Url:     rawUrl,
-		Message: message,
+		Message: message.Msg,
 		Err:     nil,
 		Cache:   make(map[string]*Client),
 	}
@@ -157,7 +157,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 		return client
 	}
 
-	var envelope *wire.Envelope 
+	var envelope *wire.Message 
 	var err error
 
 	for {
@@ -184,7 +184,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 }
 
-func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Envelope, error) {
+func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Message, error) {
 
 	content_type, payload, err := r.Body()
 	if err != nil {

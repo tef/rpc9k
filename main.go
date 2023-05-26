@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	c2 := client.New("/", wire.Root, nil)
+	c2 := client.New("/", &wire.Root, nil)
 	r := c2.Fetch("Example")
 
 	if r.Err != nil {
@@ -62,7 +62,7 @@ func main() {
 
 	fmt.Println("====")
 
-	envelope := wire.Envelope{Msg: wire.Example}
+	envelope := &wire.Example
 
 	b, err := json.Marshal(envelope)
 
@@ -72,7 +72,7 @@ func main() {
 		fmt.Println("envelope json", string(b))
 	}
 
-	var envelope2 wire.Envelope
+	var envelope2 wire.Message
 
 	err = json.Unmarshal(b, &envelope2)
 
