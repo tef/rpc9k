@@ -17,16 +17,16 @@ type Auth struct {
 type Client struct {
 	Options any
 	Url     string
-	Message wire.WireMessage
+	Envelope wire.Envelope
 	Err     error
 	Cache   map[string]*Client
 }
 
-func New(rawUrl string, message wire.Envelope, options any) *Client {
+func New(rawUrl string, envelope wire.Envelope, options any) *Client {
 	return &Client{
 		Options: options,
 		Url:     rawUrl,
-		Message: message.Msg,
+		Envelope: envelope,
 		Err:     nil,
 		Cache:   make(map[string]*Client),
 	}
@@ -48,7 +48,7 @@ func Dial(rawUrl string, options any) *Client {
 
 func (c *Client) withErr(err error) *Client {
 	return &Client{
-		Message: &wire.Error{Id: "error", Text: err.Error()},
+		Envelope: wire.NewErr("error", err),
 		Options: c.Options,
 		Err:     err,
 	}
@@ -58,7 +58,7 @@ func (c *Client) withNewError(args ...any) *Client {
 	text := fmt.Sprintln(args...)
 	err := errors.New(text)
 	return &Client{
-		Message: &wire.Error{Id: "error", Text: text},
+		Envelope: wire.NewErr("error", err),
 		Options: c.Options,
 		Err:     err,
 	}
@@ -74,7 +74,7 @@ func (c *Client) urlFor(r *wire.Request) string {
 func (c *Client) Invoke(name string, args any) *Client {
 	if c.Err != nil {
 		return c
-	} else if c.Message == nil || c.Url == "" {
+	} else if c.Envelope.IsEmpty() || c.Url == "" {
 		return c.withNewError("No url opened")
 	}
 	return c.Fetch(name).Call(args)
@@ -83,11 +83,11 @@ func (c *Client) Invoke(name string, args any) *Client {
 func (c *Client) Call(args any) *Client {
 	if c.Err != nil {
 		return c
-	} else if c.Message == nil || c.Url == "" {
+	} else if c.Envelope.IsEmpty() || c.Url == "" {
 		return c.withNewError("No url opened")
 	}
 
-	request := c.Message.Call(args, c.Url)
+	request := c.Envelope.Call(args, c.Url)
 	return c.Request(request)
 
 }
@@ -95,7 +95,7 @@ func (c *Client) Call(args any) *Client {
 func (c *Client) Fetch(path string) *Client {
 	if c.Err != nil {
 		return c
-	} else if c.Message == nil || c.Url == "" {
+	} else if c.Envelope.IsEmpty() || c.Url == "" {
 		return c.withNewError("No url opened")
 	}
 	if c.Cache != nil {
@@ -117,7 +117,7 @@ func (c *Client) Fetch(path string) *Client {
 
 		// fmt.Println("Non Cached Fetch:", path, "getting", prefix)
 
-		request := client.Message.Fetch(name, client.Url)
+		request := client.Envelope.Fetch(name, client.Url)
 
 		// fmt.Println("Request:", prefix, request)
 
@@ -149,7 +149,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 	if r.Cached != nil {
 		client := &Client{
-			Message: r.Cached,
+			Envelope: r.Cached.Wrap(),
 			Url:     url,
 			Options: c.Options,
 			Err:     nil,
@@ -176,7 +176,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 	fmt.Println("Envelope reply:", envelope.Kind)
 
 	client := &Client{
-		Message: envelope.Msg,
+		Envelope: *envelope,
 		Url:     url,
 		Options: c.Options,
 	}
@@ -222,7 +222,7 @@ func (c *Client) Scan(out any) *Client {
 		return c
 	}
 
-	err := c.Message.Scan(out)
+	err := c.Envelope.Scan(out)
 	if err != nil {
 		return c.withErr(err)
 	}

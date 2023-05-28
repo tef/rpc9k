@@ -7,7 +7,7 @@ import (
 )
 
 var Root = (&Namespace{
-	CommonMessage: CommonMessage{
+	Header: Header{
 		Kind:       "Namespace",
 		ApiVersion: "0",
 	},
@@ -19,7 +19,7 @@ var Root = (&Namespace{
 }).Wrap()
 
 var Example = (&Service{
-	CommonMessage: CommonMessage{
+	Header: Header{
 		Kind:       "Service",
 		ApiVersion: "0",
 	},
@@ -31,7 +31,7 @@ var Example = (&Service{
 }).Wrap()
 
 var rpc = (&Procedure{
-	CommonMessage: CommonMessage{
+	Header: Header{
 		Kind:       "Service",
 		ApiVersion: "0",
 	},
@@ -48,7 +48,7 @@ func FakeServer(Action string, url string, content_type string, buf []byte) (*En
 			redirect := &Envelope{
 				Kind:"Redirect", 
 				Msg: &Redirect {
-					CommonMessage: CommonMessage{
+					Header: Header{
 						Kind:       "Redirect",
 						ApiVersion: "0",
 					},

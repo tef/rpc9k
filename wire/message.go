@@ -3,6 +3,7 @@ package wire
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	neturl "net/url"
 	"reflect"
 	"time"
@@ -118,30 +119,30 @@ type Metadata struct {
 	Version   int       `json:"Version"`
 }
 
-type CommonMessage struct {
+type Header struct {
 	Kind       string   `json:"Kind"`
 	ApiVersion string   `json:"ApiVersion"`
 	Metadata   Metadata `json:"Metadata"`
 }
 
-func (b *CommonMessage) Routes() []string {
+func (b *Header) Routes() []string {
 	return []string{}
 }
 
-func (b *CommonMessage) Fetch(name string, base string) *Request {
+func (b *Header) Fetch(name string, base string) *Request {
 	return nil
 }
 
-func (b *CommonMessage) Call(args any, base string) *Request {
+func (b *Header) Call(args any, base string) *Request {
 	return nil
 }
 
-func (b *CommonMessage) Scan(args any) error {
+func (b *Header) Scan(args any) error {
 	return errors.New("no value")
 }
 
 type Namespace struct {
-	CommonMessage
+	Header
 	Names  []string            `json:"Names"`
 	Urls   map[string]string   `json:"Urls"`
 	Embeds map[string]Envelope `json:"Embeds"`
@@ -177,7 +178,7 @@ func (n *Namespace) Fetch(name string, base string) *Request {
 }
 
 type Service struct {
-	CommonMessage
+	Header
 	Params  map[string]string
 	Methods []string
 	Urls    map[string]string
@@ -215,7 +216,7 @@ func (s *Service) Fetch(name string, base string) *Request {
 }
 
 type Procedure struct {
-	CommonMessage
+	Header
 	Params    map[string]string
 	Arguments []string
 	Result    Envelope
@@ -238,7 +239,7 @@ func (p *Procedure) Call(args any, base string) *Request {
 }
 
 type JSON struct {
-	CommonMessage
+	Header
 	Value json.RawMessage
 }
 func (n *JSON) Wrap() Envelope {
@@ -251,7 +252,7 @@ func (m *JSON) Scan(out any) error {
 }
 
 type Blob struct {
-	CommonMessage
+	Header
 	ContentType string
 	Value       []byte
 }
@@ -261,7 +262,7 @@ func (n *Blob) Wrap() Envelope {
 
 
 type Value struct {
-	CommonMessage
+	Header
 	Value any
 }
 
@@ -281,7 +282,7 @@ func (e *Value) Scan(out any) error {
 }
 
 type Empty struct { // HTTP 203
-	CommonMessage
+	Header
 }
 func (n *Empty) Wrap() Envelope {
 	return Envelope{Kind: "Empty", Msg: n}
@@ -289,7 +290,7 @@ func (n *Empty) Wrap() Envelope {
 
 
 type Redirect struct {
-	CommonMessage
+	Header
 	Target string
 }
 func (n *Redirect) Wrap() Envelope {
@@ -307,7 +308,7 @@ func (r *Redirect) Url(base string) string {
 
 
 type Error struct {
-	CommonMessage
+	Header
 	Id   string
 	Text string
 }
@@ -316,4 +317,33 @@ func (n *Error) Wrap() Envelope {
 }
 
 
+func NewError(id string, args ...any) Envelope {
+	errText := fmt.Sprint(args)
+	return Envelope{
+		Kind: "Error",
+		Msg: &Error{
+			Header: Header{
+				Kind: "Error",
+				ApiVersion: "0",
+			},
+			Id: id, 
+			Text: errText,
+		},
+	}
+}
+
+
+func NewErr(id string, err error) Envelope {
+	return Envelope{
+		Kind: "Error",
+		Msg: &Error{
+			Header: Header{
+				Kind: "Error",
+				ApiVersion: "0",
+			},
+			Id: id, 
+			Text: err.Error(),
+		},
+	}
+}
 // ClientError? ServerError
