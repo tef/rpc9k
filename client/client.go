@@ -222,6 +222,12 @@ func (c *Client) Scan(out any) *Client {
 		return c
 	}
 
+	if c.Envelope.IsEmpty() && out == nil {
+		return c
+	} else if c.Envelope.IsEmpty() || out == nil {
+		return c.withNewError("bad. nil")
+	}
+
 	err := c.Envelope.Scan(out)
 	if err != nil {
 		return c.withErr(err)

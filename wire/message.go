@@ -27,18 +27,18 @@ type WireMessage interface {
 	Wrap() Envelope
 	// Empty() bool
 	// Blob() Blob
-	// 
+	//
 }
 
 type Envelope struct {
-	Kind string `json:"Kind"`
-	Msg WireMessage `json:"-"`
+	Kind string      `json:"Kind"`
+	Msg  WireMessage `json:"-"`
 }
 
 func (e *Envelope) Unwrap(out WireMessage) bool {
 	if e == nil && out == nil {
 		return true
-	} else if e== nil || out == nil {
+	} else if e == nil || out == nil {
 		return false
 	}
 
@@ -53,7 +53,9 @@ func (e *Envelope) Unwrap(out WireMessage) bool {
 }
 
 func (e *Envelope) UnmarshalJSON(bytes []byte) error {
-	var M struct {Kind string `json:"Kind"`}
+	var M struct {
+		Kind string `json:"Kind"`
+	}
 
 	err := json.Unmarshal(bytes, &M)
 	if err != nil {
@@ -72,7 +74,7 @@ func (e *Envelope) UnmarshalJSON(bytes []byte) error {
 func (e *Envelope) MarshalJSON() ([]byte, error) {
 	if e == nil {
 		return json.Marshal(Empty{})
-	} else { 
+	} else {
 		return json.Marshal(e.Msg)
 	}
 }
@@ -86,7 +88,7 @@ func (b Envelope) Wrap() Envelope {
 }
 
 func (b Envelope) IsEmpty() bool {
-	return  (b.Msg == nil || b.Kind == "Empty")
+	return (b.Msg == nil || b.Kind == "Empty")
 }
 
 func (b Envelope) Routes() []string {
@@ -147,10 +149,10 @@ type Namespace struct {
 	Urls   map[string]string   `json:"Urls"`
 	Embeds map[string]Envelope `json:"Embeds"`
 }
+
 func (n *Namespace) Wrap() Envelope {
 	return Envelope{Kind: "Namespace", Msg: n}
 }
-
 
 func (n *Namespace) Routes() []string {
 	return n.Names
@@ -165,7 +167,7 @@ func (n *Namespace) Fetch(name string, base string) *Request {
 	if ok {
 		request.Relative = url
 	} else {
-		request.Relative = name 
+		request.Relative = name
 	}
 
 	message, ok := n.Embeds[name]
@@ -221,10 +223,10 @@ type Procedure struct {
 	Arguments []string
 	Result    Envelope
 }
+
 func (n *Procedure) Wrap() Envelope {
 	return Envelope{Kind: "Procedure", Msg: n}
 }
-
 
 func (p *Procedure) Call(args any, base string) *Request {
 	request := &Request{
@@ -242,10 +244,10 @@ type JSON struct {
 	Header
 	Value json.RawMessage
 }
+
 func (n *JSON) Wrap() Envelope {
 	return Envelope{Kind: "JSON", Msg: n}
 }
-
 
 func (m *JSON) Scan(out any) error {
 	return json.Unmarshal(m.Value, out)
@@ -256,10 +258,10 @@ type Blob struct {
 	ContentType string
 	Value       []byte
 }
+
 func (n *Blob) Wrap() Envelope {
 	return Envelope{Kind: "Blob", Msg: n}
 }
-
 
 type Value struct {
 	Header
@@ -271,10 +273,17 @@ func (n *Value) Wrap() Envelope {
 }
 
 func (e *Value) Scan(out any) error {
+	if e == nil && out == nil {
+		return nil
+	} else if e != nil || out == nil {
+		return errors.New("can't scan from/to nil")
+	}
+
 	output := reflect.Indirect(reflect.ValueOf(out))
 	input := reflect.Indirect(reflect.ValueOf(e.Value))
+
 	if output.Kind() == input.Kind() {
-		return errors.New("Can't unwrap")
+		return errors.New("can't scan diff types")
 	}
 
 	output.Set(input)
@@ -284,19 +293,19 @@ func (e *Value) Scan(out any) error {
 type Empty struct { // HTTP 203
 	Header
 }
+
 func (n *Empty) Wrap() Envelope {
 	return Envelope{Kind: "Empty", Msg: n}
 }
-
 
 type Redirect struct {
 	Header
 	Target string
 }
+
 func (n *Redirect) Wrap() Envelope {
 	return Envelope{Kind: "Redirect", Msg: n}
 }
-
 
 func (r *Redirect) Url(base string) string {
 	if r.Target[0] == '/' {
@@ -306,16 +315,15 @@ func (r *Redirect) Url(base string) string {
 	return url
 }
 
-
 type Error struct {
 	Header
 	Id   string
 	Text string
 }
+
 func (n *Error) Wrap() Envelope {
 	return Envelope{Kind: "Error", Msg: n}
 }
-
 
 func NewError(id string, args ...any) Envelope {
 	errText := fmt.Sprint(args)
@@ -323,27 +331,27 @@ func NewError(id string, args ...any) Envelope {
 		Kind: "Error",
 		Msg: &Error{
 			Header: Header{
-				Kind: "Error",
+				Kind:       "Error",
 				ApiVersion: "0",
 			},
-			Id: id, 
+			Id:   id,
 			Text: errText,
 		},
 	}
 }
-
 
 func NewErr(id string, err error) Envelope {
 	return Envelope{
 		Kind: "Error",
 		Msg: &Error{
 			Header: Header{
-				Kind: "Error",
+				Kind:       "Error",
 				ApiVersion: "0",
 			},
-			Id: id, 
+			Id:   id,
 			Text: err.Error(),
 		},
 	}
 }
+
 // ClientError? ServerError
