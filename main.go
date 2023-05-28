@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	c2 := client.New("/", &wire.Root, nil)
+	c2 := client.New("/", wire.Root, nil)
 	r := c2.Fetch("Example")
 
 	if r.Err != nil {

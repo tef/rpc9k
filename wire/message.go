@@ -3,123 +3,10 @@ package wire
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	neturl "net/url"
 	"reflect"
 	"time"
 )
-
-var Root = (&Namespace{
-	CommonMessage: CommonMessage{
-		Kind:       "Namespace",
-		ApiVersion: "0",
-	},
-	Names: []string{"Example"},
-	Urls:  map[string]string{},
-	Embeds: map[string]Envelope{
-	//	"Example": Envelope{Msg: Example},
-	},
-}).Wrap()
-
-var Example = (&Service{
-	CommonMessage: CommonMessage{
-		Kind:       "Service",
-		ApiVersion: "0",
-	},
-	Methods: []string{"rpc"},
-	Urls:    map[string]string{},
-	Embeds: map[string]Envelope{
-	//	"rpc": Envelope{Msg: rpc},
-	},
-}).Wrap()
-
-var rpc = (&Procedure{
-	CommonMessage: CommonMessage{
-		Kind:       "Service",
-		ApiVersion: "0",
-	},
-	Arguments: []string{"x", "y"},
-}).Wrap()
-
-func FakeServer(Action string, url string, content_type string, buf []byte) (*Envelope, error) {
-	fmt.Println("serving", Action, url)
-
-	if Action == "get" {
-		if url == "/" {
-			return &Root, nil
-		} else if url == "/Example" {
-			redirect := &Envelope{
-				Kind:"Redirect", 
-				Msg: &Redirect {
-					CommonMessage: CommonMessage{
-						Kind:       "Redirect",
-						ApiVersion: "0",
-					},
-					Target: "/Example/",
-				},
-			}
-			return redirect, nil
-		} else if url == "/Example/" {
-			return &Example, nil
-		} else if url == "/Example/rpc" {
-			return &rpc, nil
-		}
-	}
-
-	if Action == "post" {
-		if url == "/Example/rpc" {
-			var output any
-			err := json.Unmarshal(buf, &output)
-			if err != nil {
-				return nil, err
-			}
-			fmt.Println("Got", output)
-
-			reply, err := json.Marshal(output)
-
-			if err != nil {
-				fmt.Println("RT", err)
-				return nil, err
-			}
-
-			return &Envelope{Kind:"JSON", Msg:&JSON{Value: reply}}, nil
-		}
-	}
-
-	return nil, errors.New("no")
-
-}
-
-type Request struct {
-	Action   string // adverb: get, call, list
-	Base     string
-	Relative string
-	Params   map[string]string
-	Args     any
-	Cached   WireMessage
-}
-
-func (r *Request) Body() (string, []byte, error) {
-	if r.Args == nil {
-		return "", nil, nil
-	}
-	content_type := "application/json"
-
-	bytes, err := json.Marshal(r.Args)
-	return content_type, bytes, err
-}
-
-func (r *Request) Url(base string) string {
-	if r.Base != "" {
-		base = r.Base
-	}
-	if r.Relative != "" {
-		url, _ := neturl.JoinPath(base, r.Relative)
-		return url
-	} else {
-		return base
-	}
-}
 
 // Can't use WireMessage as a struct member when said struct
 // gets converted to and from json, encoder doesn't know
@@ -137,14 +24,23 @@ type WireMessage interface {
 	Call(args any, base string) *Request
 	Scan(args any) error
 	Wrap() Envelope
+	// Empty() bool
+	// Blob() Blob
+	// 
 }
 
 type Envelope struct {
-	Kind string
-	Msg WireMessage
+	Kind string `json:"Kind"`
+	Msg WireMessage `json:"-"`
 }
 
 func (e *Envelope) Unwrap(out WireMessage) bool {
+	if e == nil && out == nil {
+		return true
+	} else if e== nil || out == nil {
+		return false
+	}
+
 	output := reflect.Indirect(reflect.ValueOf(out))
 	input := reflect.Indirect(reflect.ValueOf(e.Msg))
 	if output.Kind() == input.Kind() {
@@ -156,7 +52,7 @@ func (e *Envelope) Unwrap(out WireMessage) bool {
 }
 
 func (e *Envelope) UnmarshalJSON(bytes []byte) error {
-	var M CommonMessage
+	var M struct {Kind string `json:"Kind"`}
 
 	err := json.Unmarshal(bytes, &M)
 	if err != nil {
@@ -172,12 +68,24 @@ func (e *Envelope) UnmarshalJSON(bytes []byte) error {
 	return json.Unmarshal(bytes, e.Msg)
 }
 
-func (e Envelope) MarshalJSON() ([]byte, error) {
-	return json.Marshal(e.Msg)
+func (e *Envelope) MarshalJSON() ([]byte, error) {
+	if e == nil {
+		return json.Marshal(Empty{})
+	} else { 
+		return json.Marshal(e.Msg)
+	}
+}
+
+func (b Envelope) Ptr() *Envelope {
+	return &b
 }
 
 func (b Envelope) Wrap() Envelope {
 	return b
+}
+
+func (b Envelope) IsEmpty() bool {
+	return  (b.Msg == nil || b.Kind == "Empty")
 }
 
 func (b Envelope) Routes() []string {
@@ -216,19 +124,19 @@ type CommonMessage struct {
 	Metadata   Metadata `json:"Metadata"`
 }
 
-func (b CommonMessage) Routes() []string {
+func (b *CommonMessage) Routes() []string {
 	return []string{}
 }
 
-func (b CommonMessage) Fetch(name string, base string) *Request {
+func (b *CommonMessage) Fetch(name string, base string) *Request {
 	return nil
 }
 
-func (b CommonMessage) Call(args any, base string) *Request {
+func (b *CommonMessage) Call(args any, base string) *Request {
 	return nil
 }
 
-func (b CommonMessage) Scan(args any) error {
+func (b *CommonMessage) Scan(args any) error {
 	return errors.New("no value")
 }
 

@@ -22,7 +22,7 @@ type Client struct {
 	Cache   map[string]*Client
 }
 
-func New(rawUrl string, message *wire.Envelope, options any) *Client {
+func New(rawUrl string, message wire.Envelope, options any) *Client {
 	return &Client{
 		Options: options,
 		Url:     rawUrl,
