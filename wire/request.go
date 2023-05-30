@@ -1,7 +1,6 @@
 package wire
 
 import (
-	"encoding/json"
 	neturl "net/url"
 )
 
@@ -10,18 +9,16 @@ type Request struct {
 	Base     string
 	Relative string
 	Params   map[string]string
-	Args     any
+	Args     Envelope
 	Cached   WireMessage
 }
 
-func (r *Request) Body() (string, []byte, error) {
-	if r.Args == nil {
-		return "", nil, nil
+func (r *Request) Body() (*Blob,  error) {
+	if r.Args.IsEmpty() {
+		return nil, nil
 	}
-	content_type := "application/json"
-
-	bytes, err := json.Marshal(r.Args)
-	return content_type, bytes, err
+	
+	return r.Args.Blob()
 }
 
 func (r *Request) Url(base string) string {

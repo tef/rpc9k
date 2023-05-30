@@ -22,7 +22,7 @@ import (
 type WireMessage interface {
 	Routes() []string
 	Fetch(name string, base string) *Request
-	Call(args any, base string) *Request
+	Call(args Envelope, base string) *Request
 	Scan(args any) error
 	Wrap() Envelope
 	// Empty() bool
@@ -50,6 +50,35 @@ func (e *Envelope) Unwrap(out WireMessage) bool {
 
 	output.Set(input)
 	return true
+}
+
+func (e *Envelope) Blob() (*Blob, error) {
+	fmt.Println("Blobbing", e.Msg)
+	if b, ok := e.Msg.(*Blob); ok {
+		return b, nil
+	} 
+	if v, ok := e.Msg.(*Value); ok {
+		content_type := "application/json"
+
+		bytes, err := json.Marshal(v.Value)
+		fmt.Println("Value is", v.Value)
+		return &Blob{ContentType: content_type, Value: bytes}, err
+	}
+	if v, ok := e.Msg.(*JSON); ok {
+		content_type := "application/json"
+		fmt.Println("Raw JSON Value", v.Value)
+
+		return &Blob{ContentType: content_type, Value: v.Value}, nil
+	}
+
+	fmt.Println("Message", e.Msg)
+	bytes, err := e.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return &Blob{ContentType:"application/9k+json", Value:bytes}, nil
+
+
 }
 
 func (e *Envelope) UnmarshalJSON(bytes []byte) error {
@@ -99,7 +128,7 @@ func (b Envelope) Fetch(name string, base string) *Request {
 	return b.Msg.Fetch(name, base)
 }
 
-func (b Envelope) Call(args any, base string) *Request {
+func (b Envelope) Call(args Envelope, base string) *Request {
 	return b.Msg.Call(args, base)
 }
 
@@ -135,7 +164,7 @@ func (b *Header) Fetch(name string, base string) *Request {
 	return nil
 }
 
-func (b *Header) Call(args any, base string) *Request {
+func (b *Header) Call(args Envelope, base string) *Request {
 	return nil
 }
 
@@ -228,7 +257,14 @@ func (n *Procedure) Wrap() Envelope {
 	return Envelope{Kind: "Procedure", Msg: n}
 }
 
-func (p *Procedure) Call(args any, base string) *Request {
+func (p *Procedure) Call(args Envelope, base string) *Request {
+	// if args is a struct, wrap it into message that
+	// gets turned into json and sent as json
+
+	// if args is a list, or a map, create a new map
+	// with the named arguments, and send over an
+	// arguments message, which has a Kind field
+
 	request := &Request{
 		Action:   "post",
 		Base:     base,
@@ -239,6 +275,19 @@ func (p *Procedure) Call(args any, base string) *Request {
 	}
 	return request
 }
+
+type Map struct {
+	Header
+	Next string
+	Entries map[string]Envelope
+}
+
+type List struct {
+	Header
+	Next string
+	Entries []Envelope
+}
+
 
 type JSON struct {
 	Header
@@ -261,6 +310,23 @@ type Blob struct {
 
 func (n *Blob) Wrap() Envelope {
 	return Envelope{Kind: "Blob", Msg: n}
+}
+func (e *Blob) Scan(out any) error {
+	if e == nil && out == nil {
+		return nil
+	} else if e != nil || out == nil {
+		return errors.New("can't scan from/to nil")
+	}
+
+	output := reflect.Indirect(reflect.ValueOf(out))
+	input := reflect.Indirect(reflect.ValueOf(e.Value))
+
+	if output.Kind() == input.Kind() {
+		return errors.New("can't scan diff types")
+	}
+
+	output.Set(input)
+	return nil
 }
 
 type Value struct {

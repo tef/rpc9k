@@ -38,7 +38,7 @@ var rpc = (&Procedure{
 	Arguments: []string{"x", "y"},
 }).Wrap()
 
-func FakeServer(Action string, url string, content_type string, buf []byte) (*Envelope, error) {
+func FakeServer(Action string, url string, payload *Blob) (*Envelope, error) {
 	fmt.Println("serving", Action, url)
 
 	if Action == "get" {
@@ -66,11 +66,11 @@ func FakeServer(Action string, url string, content_type string, buf []byte) (*En
 	if Action == "post" {
 		if url == "/Example/rpc" {
 			var output any
-			err := json.Unmarshal(buf, &output)
+			err := json.Unmarshal(payload.Value, &output)
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println("Got", output)
+			fmt.Println("Got", payload.Value, output)
 
 			reply, err := json.Marshal(output)
 

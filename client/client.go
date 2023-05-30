@@ -86,8 +86,15 @@ func (c *Client) Call(args any) *Client {
 	} else if c.Envelope.IsEmpty() || c.Url == "" {
 		return c.withNewError("No url opened")
 	}
+	var env wire.Envelope
+	if m, ok := args.(wire.WireMessage); ok {
+		env = m.Wrap()
+	} else {
+		value := &wire.Value{Value: args}
+		env = value.Wrap()
+	}
 
-	request := c.Envelope.Call(args, c.Url)
+	request := c.Envelope.Call(env, c.Url)
 	return c.Request(request)
 
 }
@@ -186,13 +193,16 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Envelope, error) {
 
-	content_type, payload, err := r.Body()
+	payload, err := r.Body()
 	if err != nil {
 		return url, nil, err
 	}
 
-	envelope, err := wire.FakeServer(r.Action, url, content_type, payload)
+	envelope, err := wire.FakeServer(r.Action, url, payload)
 	// redirect handling/ faking
+	// we should get blob back from FakeServer, and promote
+	// it to an envelope with a JSON if the contents are JSON
+	// and a Message if the contents are the message conten/type
 
 	if err != nil {
 		return url, nil, err
@@ -216,6 +226,17 @@ func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Envelop
 
 
 }
+func (c *Client) Blob() (*wire.Blob, error) {
+	if c.Err != nil {
+		return nil, c.Err
+	}
+	if c.Envelope.IsEmpty() {
+		return nil, nil
+	}
+
+	return c.Envelope.Blob()
+}
+
 
 func (c *Client) Scan(out any) *Client {
 	if c.Err != nil {
