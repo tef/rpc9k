@@ -2,8 +2,8 @@ package wire
 
 import (
 	"encoding/json"
-	"fmt"
 	"errors"
+	"fmt"
 )
 
 var Root = (&Namespace{
@@ -11,10 +11,10 @@ var Root = (&Namespace{
 		Kind:       "Namespace",
 		ApiVersion: "0",
 	},
-	Names: []string{"Example"},
-	Urls:  map[string]string{},
+	Names:  []string{"Example"},
+	Urls:   map[string]string{},
 	Embeds: map[string]Envelope{
-	//	"Example": Envelope{Msg: Example},
+		//	"Example": Envelope{Msg: Example},
 	},
 }).Wrap()
 
@@ -25,8 +25,8 @@ var Example = (&Service{
 	},
 	Methods: []string{"rpc"},
 	Urls:    map[string]string{},
-	Embeds: map[string]Envelope{
-	//	"rpc": Envelope{Msg: rpc},
+	Embeds:  map[string]Envelope{
+		//	"rpc": Envelope{Msg: rpc},
 	},
 }).Wrap()
 
@@ -46,8 +46,8 @@ func FakeServer(Action string, url string, payload *Blob) (*Envelope, error) {
 			return &Root, nil
 		} else if url == "/Example" {
 			redirect := &Envelope{
-				Kind:"Redirect", 
-				Msg: &Redirect {
+				Kind: "Redirect",
+				Msg: &Redirect{
 					Header: Header{
 						Kind:       "Redirect",
 						ApiVersion: "0",
@@ -79,11 +79,10 @@ func FakeServer(Action string, url string, payload *Blob) (*Envelope, error) {
 				return nil, err
 			}
 
-			return &Envelope{Kind:"JSON", Msg:&JSON{Value: reply}}, nil
+			return &Envelope{Kind: "JSON", Msg: &JSON{Value: reply}}, nil
 		}
 	}
 
 	return nil, errors.New("no")
 
 }
-

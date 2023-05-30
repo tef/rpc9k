@@ -56,7 +56,7 @@ func (e *Envelope) Blob() (*Blob, error) {
 	fmt.Println("Blobbing", e.Msg)
 	if b, ok := e.Msg.(*Blob); ok {
 		return b, nil
-	} 
+	}
 	if v, ok := e.Msg.(*Value); ok {
 		content_type := "application/json"
 
@@ -76,8 +76,7 @@ func (e *Envelope) Blob() (*Blob, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Blob{ContentType:"application/9k+json", Value:bytes}, nil
-
+	return &Blob{ContentType: "application/9k+json", Value: bytes}, nil
 
 }
 
@@ -278,16 +277,15 @@ func (p *Procedure) Call(args Envelope, base string) *Request {
 
 type Map struct {
 	Header
-	Next string
+	Next    string
 	Entries map[string]Envelope
 }
 
 type List struct {
 	Header
-	Next string
+	Next    string
 	Entries []Envelope
 }
-
 
 type JSON struct {
 	Header

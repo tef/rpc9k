@@ -13,11 +13,11 @@ type Request struct {
 	Cached   WireMessage
 }
 
-func (r *Request) Body() (*Blob,  error) {
+func (r *Request) Body() (*Blob, error) {
 	if r.Args.IsEmpty() {
 		return nil, nil
 	}
-	
+
 	return r.Args.Blob()
 }
 
@@ -32,4 +32,3 @@ func (r *Request) Url(base string) string {
 		return base
 	}
 }
-

@@ -15,20 +15,20 @@ type Auth struct {
 }
 
 type Client struct {
-	Options any
-	Url     string
+	Options  any
+	Url      string
 	Envelope wire.Envelope
-	Err     error
-	Cache   map[string]*Client
+	Err      error
+	Cache    map[string]*Client
 }
 
 func New(rawUrl string, envelope wire.Envelope, options any) *Client {
 	return &Client{
-		Options: options,
-		Url:     rawUrl,
+		Options:  options,
+		Url:      rawUrl,
 		Envelope: envelope,
-		Err:     nil,
-		Cache:   make(map[string]*Client),
+		Err:      nil,
+		Cache:    make(map[string]*Client),
 	}
 }
 
@@ -49,8 +49,8 @@ func Dial(rawUrl string, options any) *Client {
 func (c *Client) withErr(err error) *Client {
 	return &Client{
 		Envelope: wire.NewErr("error", err),
-		Options: c.Options,
-		Err:     err,
+		Options:  c.Options,
+		Err:      err,
 	}
 }
 
@@ -59,8 +59,8 @@ func (c *Client) withNewError(args ...any) *Client {
 	err := errors.New(text)
 	return &Client{
 		Envelope: wire.NewErr("error", err),
-		Options: c.Options,
-		Err:     err,
+		Options:  c.Options,
+		Err:      err,
 	}
 }
 
@@ -157,14 +157,14 @@ func (c *Client) Request(r *wire.Request) *Client {
 	if r.Cached != nil {
 		client := &Client{
 			Envelope: r.Cached.Wrap(),
-			Url:     url,
-			Options: c.Options,
-			Err:     nil,
+			Url:      url,
+			Options:  c.Options,
+			Err:      nil,
 		}
 		return client
 	}
 
-	var envelope *wire.Envelope 
+	var envelope *wire.Envelope
 	var err error
 
 	for {
@@ -179,13 +179,13 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 		break
 	}
-	
+
 	fmt.Println("Envelope reply:", envelope.Kind)
 
 	client := &Client{
 		Envelope: *envelope,
-		Url:     url,
-		Options: c.Options,
+		Url:      url,
+		Options:  c.Options,
 	}
 	return client
 
@@ -224,7 +224,6 @@ func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Envelop
 
 	return url, envelope, nil
 
-
 }
 func (c *Client) Blob() (*wire.Blob, error) {
 	if c.Err != nil {
@@ -236,7 +235,6 @@ func (c *Client) Blob() (*wire.Blob, error) {
 
 	return c.Envelope.Blob()
 }
-
 
 func (c *Client) Scan(out any) *Client {
 	if c.Err != nil {
