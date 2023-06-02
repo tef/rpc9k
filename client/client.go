@@ -87,9 +87,11 @@ func (c *Client) Call(args any) *Client {
 		return c.withNewError("No url opened")
 	}
 	var env wire.Envelope
-	if m, ok := args.(wire.WireMessage); ok {
+	if e, ok := args.(wire.Envelope); ok {
+		env = e
+	} else if m, ok := args.(wire.WireMessage); ok {
 		env = m.Wrap()
-	} else {
+	} else { // Raw Go Value
 		value := &wire.Value{Value: args}
 		env = value.Wrap()
 	}
