@@ -32,7 +32,7 @@ var Example = (&Service{
 
 var rpc = (&Procedure{
 	Header: Header{
-		Kind:       "Service",
+		Kind:       "Procedure",
 		ApiVersion: "0",
 	},
 	Arguments: []string{"x", "y"},
