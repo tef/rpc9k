@@ -22,6 +22,13 @@ type Client struct {
 	Cache    map[string]*Client
 }
 
+func (c *Client) Variant() wire.Variant {
+	if c.Response.IsEmpty() {
+		return (&wire.Empty{}).Wrap()
+	}
+	return c.Response
+}
+
 func New(rawUrl string, variant wire.Variant, options any) *Client {
 	return &Client{
 		Options:  options,

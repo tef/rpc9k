@@ -82,9 +82,9 @@ func main() {
 		fmt.Println("variant contents", variant.Kind, variant.Msg)
 	}
 
-	var ser wire.Service
+	var inst wire.Instance
 
-	variant.Unwrap(&ser)
+	variant.Unwrap(&inst)
 
-	fmt.Println("Unwrap", ser)
+	fmt.Println("Unwrap", inst)
 }

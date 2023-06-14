@@ -138,9 +138,9 @@ func (b Variant) Scan(args any) error {
 type MessageBuilder func() WireMessage
 
 var Messages = map[string]MessageBuilder{
-	"Namespace": func() WireMessage { return &Namespace{} },
-	"Service":   func() WireMessage { return &Service{} },
-	"Procedure": func() WireMessage { return &Namespace{} },
+	"Module":    func() WireMessage { return &Module{} },
+	"Instance":   func() WireMessage { return &Instance{} },
+	"Procedure": func() WireMessage { return &Procedure{} },
 }
 
 type Metadata struct {
@@ -171,22 +171,22 @@ func (b *Header) Scan(args any) error {
 	return errors.New("no value")
 }
 
-type Namespace struct {
+type Module struct {
 	Header
 	Names  []string            `json:"Names"`
 	Urls   map[string]string   `json:"Urls"`
 	Embeds map[string]Variant `json:"Embeds"`
 }
 
-func (n *Namespace) Wrap() Variant {
-	return Variant{Kind: "Namespace", Msg: n}
+func (n *Module) Wrap() Variant {
+	return Variant{Kind: "Module", Msg: n}
 }
 
-func (n *Namespace) Routes() []string {
+func (n *Module) Routes() []string {
 	return n.Names
 }
 
-func (n *Namespace) Fetch(name string, base string) *Request {
+func (n *Module) Fetch(name string, base string) *Request {
 	request := &Request{
 		Action: "get",
 		Base:   base,
@@ -207,7 +207,7 @@ func (n *Namespace) Fetch(name string, base string) *Request {
 	return request
 }
 
-type Service struct {
+type Instance struct {
 	Header
 	Params  map[string]string
 	Methods []string
@@ -215,15 +215,15 @@ type Service struct {
 	Embeds  map[string]Variant
 }
 
-func (n *Service) Wrap() Variant {
-	return Variant{Kind: "Service", Msg: n}
+func (n *Instance) Wrap() Variant {
+	return Variant{Kind: "Instance", Msg: n}
 }
 
-func (s *Service) Routes() []string {
+func (s *Instance) Routes() []string {
 	return s.Methods
 }
 
-func (s *Service) Fetch(name string, base string) *Request {
+func (s *Instance) Fetch(name string, base string) *Request {
 	request := &Request{
 		Action: "get",
 		Base:   base,

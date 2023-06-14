@@ -6,9 +6,9 @@ import (
 	"fmt"
 )
 
-var Root = (&Namespace{
+var Root = (&Module{
 	Header: Header{
-		Kind:       "Namespace",
+		Kind:       "Module",
 		ApiVersion: "0",
 	},
 	Names:  []string{"Example"},
@@ -18,9 +18,9 @@ var Root = (&Namespace{
 	},
 }).Wrap()
 
-var Example = (&Service{
+var Example = (&Instance{
 	Header: Header{
-		Kind:       "Service",
+		Kind:       "Instance",
 		ApiVersion: "0",
 	},
 	Methods: []string{"rpc"},
