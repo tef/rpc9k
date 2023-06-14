@@ -9,7 +9,7 @@ type Request struct {
 	Base     string
 	Relative string
 	Params   map[string]string
-	Args     Envelope
+	Args     Variant
 	Cached   WireMessage
 }
 

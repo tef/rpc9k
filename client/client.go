@@ -17,16 +17,16 @@ type Auth struct {
 type Client struct {
 	Options  any
 	Url      string
-	Envelope wire.Envelope
+	Response wire.Variant
 	Err      error
 	Cache    map[string]*Client
 }
 
-func New(rawUrl string, envelope wire.Envelope, options any) *Client {
+func New(rawUrl string, variant wire.Variant, options any) *Client {
 	return &Client{
 		Options:  options,
 		Url:      rawUrl,
-		Envelope: envelope,
+		Response: variant,
 		Err:      nil,
 		Cache:    make(map[string]*Client),
 	}
@@ -48,7 +48,7 @@ func Dial(rawUrl string, options any) *Client {
 
 func (c *Client) withErr(err error) *Client {
 	return &Client{
-		Envelope: wire.NewErr("error", err),
+		Response: wire.NewErr("error", err),
 		Options:  c.Options,
 		Err:      err,
 	}
@@ -58,7 +58,7 @@ func (c *Client) withNewError(args ...any) *Client {
 	text := fmt.Sprintln(args...)
 	err := errors.New(text)
 	return &Client{
-		Envelope: wire.NewErr("error", err),
+		Response: wire.NewErr("error", err),
 		Options:  c.Options,
 		Err:      err,
 	}
@@ -74,7 +74,7 @@ func (c *Client) urlFor(r *wire.Request) string {
 func (c *Client) Invoke(name string, args any) *Client {
 	if c.Err != nil {
 		return c
-	} else if c.Envelope.IsEmpty() || c.Url == "" {
+	} else if c.Response.IsEmpty() || c.Url == "" {
 		return c.withNewError("No url opened")
 	}
 	return c.Fetch(name).Call(args)
@@ -83,11 +83,11 @@ func (c *Client) Invoke(name string, args any) *Client {
 func (c *Client) Call(args any) *Client {
 	if c.Err != nil {
 		return c
-	} else if c.Envelope.IsEmpty() || c.Url == "" {
+	} else if c.Response.IsEmpty() || c.Url == "" {
 		return c.withNewError("No url opened")
 	}
-	var env wire.Envelope
-	if e, ok := args.(wire.Envelope); ok {
+	var env wire.Variant
+	if e, ok := args.(wire.Variant); ok {
 		env = e
 	} else if m, ok := args.(wire.WireMessage); ok {
 		env = m.Wrap()
@@ -96,7 +96,7 @@ func (c *Client) Call(args any) *Client {
 		env = value.Wrap()
 	}
 
-	request := c.Envelope.Call(env, c.Url)
+	request := c.Response.Call(env, c.Url)
 	return c.Request(request)
 
 }
@@ -104,7 +104,7 @@ func (c *Client) Call(args any) *Client {
 func (c *Client) Fetch(path string) *Client {
 	if c.Err != nil {
 		return c
-	} else if c.Envelope.IsEmpty() || c.Url == "" {
+	} else if c.Response.IsEmpty() || c.Url == "" {
 		return c.withNewError("No url opened")
 	}
 	if c.Cache != nil {
@@ -126,7 +126,7 @@ func (c *Client) Fetch(path string) *Client {
 
 		// fmt.Println("Non Cached Fetch:", path, "getting", prefix)
 
-		request := client.Envelope.Fetch(name, client.Url)
+		request := client.Response.Fetch(name, client.Url)
 
 		// fmt.Println("Request:", prefix, request)
 
@@ -158,7 +158,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 	if r.Cached != nil {
 		client := &Client{
-			Envelope: r.Cached.Wrap(),
+			Response: r.Cached.Wrap(),
 			Url:      url,
 			Options:  c.Options,
 			Err:      nil,
@@ -166,11 +166,11 @@ func (c *Client) Request(r *wire.Request) *Client {
 		return client
 	}
 
-	var envelope *wire.Envelope
+	var variant *wire.Variant
 	var err error
 
 	for {
-		url, envelope, err = c.httpRequest(url, r)
+		url, variant, err = c.httpRequest(url, r)
 		if err != nil {
 			return c.withErr(err)
 		}
@@ -182,10 +182,10 @@ func (c *Client) Request(r *wire.Request) *Client {
 		break
 	}
 
-	fmt.Println("Envelope reply:", envelope.Kind)
+	fmt.Println("Variant reply:", variant.Kind)
 
 	client := &Client{
-		Envelope: *envelope,
+		Response: *variant,
 		Url:      url,
 		Options:  c.Options,
 	}
@@ -193,29 +193,29 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 }
 
-func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Envelope, error) {
+func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Variant, error) {
 
 	payload, err := r.Body()
 	if err != nil {
 		return url, nil, err
 	}
 
-	envelope, err := wire.FakeServer(r.Action, url, payload)
+	variant, err := wire.FakeServer(r.Action, url, payload)
 	// redirect handling/ faking
 	// we should get blob back from FakeServer, and promote
-	// it to an envelope with a JSON if the contents are JSON
+	// it to an variant with a JSON if the contents are JSON
 	// and a Message if the contents are the message conten/type
 
 	if err != nil {
 		return url, nil, err
 	}
 
-	if envelope.Kind == "Redirect" {
-		redirect, ok := envelope.Msg.(*wire.Redirect)
+	if variant.Kind == "Redirect" {
+		redirect, ok := variant.Msg.(*wire.Redirect)
 		if ok {
 			url = redirect.Url(url)
 			fmt.Println("fetching redirected", url)
-			_, envelope, err = c.httpRequest(url, r)
+			_, variant, err = c.httpRequest(url, r)
 
 			if err != nil {
 				return url, nil, err
@@ -224,18 +224,18 @@ func (c *Client) httpRequest(url string, r *wire.Request) (string, *wire.Envelop
 
 	}
 
-	return url, envelope, nil
+	return url, variant, nil
 
 }
 func (c *Client) Blob() (*wire.Blob, error) {
 	if c.Err != nil {
 		return nil, c.Err
 	}
-	if c.Envelope.IsEmpty() {
+	if c.Response.IsEmpty() {
 		return nil, nil
 	}
 
-	return c.Envelope.Blob()
+	return c.Response.Blob()
 }
 
 func (c *Client) Scan(out any) *Client {
@@ -243,13 +243,13 @@ func (c *Client) Scan(out any) *Client {
 		return c
 	}
 
-	if c.Envelope.IsEmpty() && out == nil {
+	if c.Response.IsEmpty() && out == nil {
 		return c
-	} else if c.Envelope.IsEmpty() || out == nil {
+	} else if c.Response.IsEmpty() || out == nil {
 		return c.withNewError("bad. nil")
 	}
 
-	err := c.Envelope.Scan(out)
+	err := c.Response.Scan(out)
 	if err != nil {
 		return c.withErr(err)
 	}

@@ -13,8 +13,8 @@ var Root = (&Namespace{
 	},
 	Names:  []string{"Example"},
 	Urls:   map[string]string{},
-	Embeds: map[string]Envelope{
-		//	"Example": Envelope{Msg: Example},
+	Embeds: map[string]Variant{
+		//	"Example": Variant{Msg: Example},
 	},
 }).Wrap()
 
@@ -25,8 +25,8 @@ var Example = (&Service{
 	},
 	Methods: []string{"rpc"},
 	Urls:    map[string]string{},
-	Embeds:  map[string]Envelope{
-		//	"rpc": Envelope{Msg: rpc},
+	Embeds:  map[string]Variant{
+		//	"rpc": Variant{Msg: rpc},
 	},
 }).Wrap()
 
@@ -38,14 +38,14 @@ var rpc = (&Procedure{
 	Arguments: []string{"x", "y"},
 }).Wrap()
 
-func FakeServer(Action string, url string, payload *Blob) (*Envelope, error) {
+func FakeServer(Action string, url string, payload *Blob) (*Variant, error) {
 	fmt.Println("serving", Action, url)
 
 	if Action == "get" {
 		if url == "/" {
 			return &Root, nil
 		} else if url == "/Example" {
-			redirect := &Envelope{
+			redirect := &Variant{
 				Kind: "Redirect",
 				Msg: &Redirect{
 					Header: Header{
@@ -79,7 +79,7 @@ func FakeServer(Action string, url string, payload *Blob) (*Envelope, error) {
 				return nil, err
 			}
 
-			return &Envelope{Kind: "JSON", Msg: &JSON{Value: reply}}, nil
+			return &Variant{Kind: "JSON", Msg: &JSON{Value: reply}}, nil
 		}
 	}
 

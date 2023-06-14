@@ -62,29 +62,29 @@ func main() {
 
 	fmt.Println("====")
 
-	envelope := &wire.Example
+	obj := &wire.Example
 
-	b, err := json.Marshal(envelope)
+	b, err := json.Marshal(obj)
 
 	if err != nil {
 		fmt.Println("err", err)
 	} else {
-		fmt.Println("envelope json", string(b))
+		fmt.Println("json", string(b))
 	}
 
-	var envelope2 wire.Envelope
+	var variant wire.Variant
 
-	err = json.Unmarshal(b, &envelope2)
+	err = json.Unmarshal(b, &variant)
 
 	if err != nil {
 		fmt.Println("err", err)
 	} else {
-		fmt.Println("envelope contents", envelope2.Msg)
+		fmt.Println("variant contents", variant.Kind, variant.Msg)
 	}
 
 	var ser wire.Service
 
-	envelope2.Unwrap(&ser)
+	variant.Unwrap(&ser)
 
 	fmt.Println("Unwrap", ser)
 }

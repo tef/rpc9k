@@ -22,20 +22,20 @@ import (
 type WireMessage interface {
 	Routes() []string
 	Fetch(name string, base string) *Request
-	Call(args Envelope, base string) *Request
+	Call(args Variant, base string) *Request
 	Scan(args any) error
-	Wrap() Envelope
+	Wrap() Variant
 	// Empty() bool
 	// Blob() Blob
 	//
 }
 
-type Envelope struct {
+type Variant struct {
 	Kind string      `json:"Kind"`
 	Msg  WireMessage `json:"-"`
 }
 
-func (e *Envelope) Unwrap(out WireMessage) bool {
+func (e *Variant) Unwrap(out WireMessage) bool {
 	if e == nil && out == nil {
 		return true
 	} else if e == nil || out == nil {
@@ -52,7 +52,7 @@ func (e *Envelope) Unwrap(out WireMessage) bool {
 	return true
 }
 
-func (e *Envelope) Blob() (*Blob, error) {
+func (e *Variant) Blob() (*Blob, error) {
 	fmt.Println("Blobbing", e.Msg)
 	if b, ok := e.Msg.(*Blob); ok {
 		return b, nil
@@ -80,7 +80,7 @@ func (e *Envelope) Blob() (*Blob, error) {
 
 }
 
-func (e *Envelope) UnmarshalJSON(bytes []byte) error {
+func (e *Variant) UnmarshalJSON(bytes []byte) error {
 	var M struct {
 		Kind string `json:"Kind"`
 	}
@@ -99,7 +99,7 @@ func (e *Envelope) UnmarshalJSON(bytes []byte) error {
 	return json.Unmarshal(bytes, e.Msg)
 }
 
-func (e *Envelope) MarshalJSON() ([]byte, error) {
+func (e *Variant) MarshalJSON() ([]byte, error) {
 	if e == nil {
 		return json.Marshal(Empty{})
 	} else {
@@ -107,31 +107,31 @@ func (e *Envelope) MarshalJSON() ([]byte, error) {
 	}
 }
 
-func (b Envelope) Ptr() *Envelope {
+func (b Variant) Ptr() *Variant {
 	return &b
 }
 
-func (b Envelope) Wrap() Envelope {
+func (b Variant) Wrap() Variant {
 	return b
 }
 
-func (b Envelope) IsEmpty() bool {
+func (b Variant) IsEmpty() bool {
 	return (b.Msg == nil || b.Kind == "Empty")
 }
 
-func (b Envelope) Routes() []string {
+func (b Variant) Routes() []string {
 	return b.Msg.Routes()
 }
 
-func (b Envelope) Fetch(name string, base string) *Request {
+func (b Variant) Fetch(name string, base string) *Request {
 	return b.Msg.Fetch(name, base)
 }
 
-func (b Envelope) Call(args Envelope, base string) *Request {
+func (b Variant) Call(args Variant, base string) *Request {
 	return b.Msg.Call(args, base)
 }
 
-func (b Envelope) Scan(args any) error {
+func (b Variant) Scan(args any) error {
 	return b.Msg.Scan(args)
 }
 
@@ -163,7 +163,7 @@ func (b *Header) Fetch(name string, base string) *Request {
 	return nil
 }
 
-func (b *Header) Call(args Envelope, base string) *Request {
+func (b *Header) Call(args Variant, base string) *Request {
 	return nil
 }
 
@@ -175,11 +175,11 @@ type Namespace struct {
 	Header
 	Names  []string            `json:"Names"`
 	Urls   map[string]string   `json:"Urls"`
-	Embeds map[string]Envelope `json:"Embeds"`
+	Embeds map[string]Variant `json:"Embeds"`
 }
 
-func (n *Namespace) Wrap() Envelope {
-	return Envelope{Kind: "Namespace", Msg: n}
+func (n *Namespace) Wrap() Variant {
+	return Variant{Kind: "Namespace", Msg: n}
 }
 
 func (n *Namespace) Routes() []string {
@@ -212,11 +212,11 @@ type Service struct {
 	Params  map[string]string
 	Methods []string
 	Urls    map[string]string
-	Embeds  map[string]Envelope
+	Embeds  map[string]Variant
 }
 
-func (n *Service) Wrap() Envelope {
-	return Envelope{Kind: "Service", Msg: n}
+func (n *Service) Wrap() Variant {
+	return Variant{Kind: "Service", Msg: n}
 }
 
 func (s *Service) Routes() []string {
@@ -249,14 +249,14 @@ type Procedure struct {
 	Header
 	Params    map[string]string
 	Arguments []string
-	Result    Envelope
+	Result    Variant
 }
 
-func (n *Procedure) Wrap() Envelope {
-	return Envelope{Kind: "Procedure", Msg: n}
+func (n *Procedure) Wrap() Variant {
+	return Variant{Kind: "Procedure", Msg: n}
 }
 
-func (p *Procedure) Call(args Envelope, base string) *Request {
+func (p *Procedure) Call(args Variant, base string) *Request {
 	// if args is a struct, wrap it into message that
 	// gets turned into json and sent as json
 
@@ -278,13 +278,13 @@ func (p *Procedure) Call(args Envelope, base string) *Request {
 type Map struct {
 	Header
 	Next    string
-	Entries map[string]Envelope
+	Entries map[string]Variant
 }
 
 type List struct {
 	Header
 	Next    string
-	Entries []Envelope
+	Entries []Variant
 }
 
 type JSON struct {
@@ -292,8 +292,8 @@ type JSON struct {
 	Value json.RawMessage
 }
 
-func (n *JSON) Wrap() Envelope {
-	return Envelope{Kind: "JSON", Msg: n}
+func (n *JSON) Wrap() Variant {
+	return Variant{Kind: "JSON", Msg: n}
 }
 
 func (m *JSON) Scan(out any) error {
@@ -306,8 +306,8 @@ type Blob struct {
 	Value       []byte
 }
 
-func (n *Blob) Wrap() Envelope {
-	return Envelope{Kind: "Blob", Msg: n}
+func (n *Blob) Wrap() Variant {
+	return Variant{Kind: "Blob", Msg: n}
 }
 func (e *Blob) Scan(out any) error {
 	if e == nil && out == nil {
@@ -332,8 +332,8 @@ type Value struct {
 	Value any
 }
 
-func (n *Value) Wrap() Envelope {
-	return Envelope{Kind: "Value", Msg: n}
+func (n *Value) Wrap() Variant {
+	return Variant{Kind: "Value", Msg: n}
 }
 
 func (e *Value) Scan(out any) error {
@@ -358,8 +358,8 @@ type Empty struct { // HTTP 203
 	Header
 }
 
-func (n *Empty) Wrap() Envelope {
-	return Envelope{Kind: "Empty", Msg: n}
+func (n *Empty) Wrap() Variant {
+	return Variant{Kind: "Empty", Msg: n}
 }
 
 type Redirect struct {
@@ -367,8 +367,8 @@ type Redirect struct {
 	Target string
 }
 
-func (n *Redirect) Wrap() Envelope {
-	return Envelope{Kind: "Redirect", Msg: n}
+func (n *Redirect) Wrap() Variant {
+	return Variant{Kind: "Redirect", Msg: n}
 }
 
 func (r *Redirect) Url(base string) string {
@@ -385,13 +385,13 @@ type Error struct {
 	Text string
 }
 
-func (n *Error) Wrap() Envelope {
-	return Envelope{Kind: "Error", Msg: n}
+func (n *Error) Wrap() Variant {
+	return Variant{Kind: "Error", Msg: n}
 }
 
-func NewError(id string, args ...any) Envelope {
+func NewError(id string, args ...any) Variant {
 	errText := fmt.Sprint(args)
-	return Envelope{
+	return Variant{
 		Kind: "Error",
 		Msg: &Error{
 			Header: Header{
@@ -404,8 +404,8 @@ func NewError(id string, args ...any) Envelope {
 	}
 }
 
-func NewErr(id string, err error) Envelope {
-	return Envelope{
+func NewErr(id string, err error) Variant {
+	return Variant{
 		Kind: "Error",
 		Msg: &Error{
 			Header: Header{
