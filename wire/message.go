@@ -139,7 +139,7 @@ type MessageBuilder func() WireMessage
 
 var Messages = map[string]MessageBuilder{
 	"Module":    func() WireMessage { return &Module{} },
-	"Instance":   func() WireMessage { return &Instance{} },
+	"Instance":  func() WireMessage { return &Instance{} },
 	"Procedure": func() WireMessage { return &Procedure{} },
 }
 
@@ -173,8 +173,8 @@ func (b *Header) Scan(args any) error {
 
 type Module struct {
 	Header
-	Names  []string            `json:"Names"`
-	Urls   map[string]string   `json:"Urls"`
+	Names  []string           `json:"Names"`
+	Urls   map[string]string  `json:"Urls"`
 	Embeds map[string]Variant `json:"Embeds"`
 }
 
