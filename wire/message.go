@@ -24,11 +24,13 @@ type WireMessage interface {
 	Fetch(name string, base string) *Request
 	Call(args Variant, base string) *Request
 	Scan(args any) error
-	Wrap() Variant
+	Variant() Variant
 	// Empty() bool
 	// Blob() Blob
 	//
 }
+
+var EmptyVariant = Variant{}
 
 type Variant struct {
 	Kind string      `json:"Kind"`
@@ -111,7 +113,7 @@ func (b Variant) Ptr() *Variant {
 	return &b
 }
 
-func (b Variant) Wrap() Variant {
+func (b Variant) Variant() Variant {
 	return b
 }
 
@@ -178,7 +180,7 @@ type Module struct {
 	Embeds map[string]Variant `json:"Embeds"`
 }
 
-func (n *Module) Wrap() Variant {
+func (n *Module) Variant() Variant {
 	return Variant{Kind: "Module", Msg: n}
 }
 
@@ -215,7 +217,7 @@ type Instance struct {
 	Embeds  map[string]Variant
 }
 
-func (n *Instance) Wrap() Variant {
+func (n *Instance) Variant() Variant {
 	return Variant{Kind: "Instance", Msg: n}
 }
 
@@ -252,7 +254,7 @@ type Procedure struct {
 	Result    Variant
 }
 
-func (n *Procedure) Wrap() Variant {
+func (n *Procedure) Variant() Variant {
 	return Variant{Kind: "Procedure", Msg: n}
 }
 
@@ -292,7 +294,7 @@ type JSON struct {
 	Value json.RawMessage
 }
 
-func (n *JSON) Wrap() Variant {
+func (n *JSON) Variant() Variant {
 	return Variant{Kind: "JSON", Msg: n}
 }
 
@@ -306,7 +308,7 @@ type Blob struct {
 	Value       []byte
 }
 
-func (n *Blob) Wrap() Variant {
+func (n *Blob) Variant() Variant {
 	return Variant{Kind: "Blob", Msg: n}
 }
 func (e *Blob) Scan(out any) error {
@@ -332,7 +334,7 @@ type Value struct {
 	Value any
 }
 
-func (n *Value) Wrap() Variant {
+func (n *Value) Variant() Variant {
 	return Variant{Kind: "Value", Msg: n}
 }
 
@@ -358,7 +360,7 @@ type Empty struct { // HTTP 203
 	Header
 }
 
-func (n *Empty) Wrap() Variant {
+func (n *Empty) Variant() Variant {
 	return Variant{Kind: "Empty", Msg: n}
 }
 
@@ -367,7 +369,7 @@ type Redirect struct {
 	Target string
 }
 
-func (n *Redirect) Wrap() Variant {
+func (n *Redirect) Variant() Variant {
 	return Variant{Kind: "Redirect", Msg: n}
 }
 
@@ -385,7 +387,7 @@ type Error struct {
 	Text string
 }
 
-func (n *Error) Wrap() Variant {
+func (n *Error) Variant() Variant {
 	return Variant{Kind: "Error", Msg: n}
 }
 

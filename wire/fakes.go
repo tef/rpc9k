@@ -16,7 +16,7 @@ var Root = (&Module{
 	Embeds: map[string]Variant{
 		//	"Example": Variant{Msg: Example},
 	},
-}).Wrap()
+}).Variant()
 
 var Example = (&Instance{
 	Header: Header{
@@ -28,7 +28,7 @@ var Example = (&Instance{
 	Embeds:  map[string]Variant{
 		//	"rpc": Variant{Msg: rpc},
 	},
-}).Wrap()
+}).Variant()
 
 var rpc = (&Procedure{
 	Header: Header{
@@ -36,7 +36,7 @@ var rpc = (&Procedure{
 		ApiVersion: "0",
 	},
 	Arguments: []string{"x", "y"},
-}).Wrap()
+}).Variant()
 
 func FakeServer(Action string, url string, payload *Blob) (*Variant, error) {
 	fmt.Println("serving", Action, url)

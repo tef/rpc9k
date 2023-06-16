@@ -24,7 +24,7 @@ type Client struct {
 
 func (c *Client) Variant() wire.Variant {
 	if c.Response.IsEmpty() {
-		return (&wire.Empty{}).Wrap()
+		return wire.Variant{} // Maybe put an empty in there but whatever
 	}
 	return c.Response
 }
@@ -97,10 +97,10 @@ func (c *Client) Call(args any) *Client {
 	if e, ok := args.(wire.Variant); ok {
 		env = e
 	} else if m, ok := args.(wire.WireMessage); ok {
-		env = m.Wrap()
+		env = m.Variant()
 	} else { // Raw Go Value
 		value := &wire.Value{Value: args}
-		env = value.Wrap()
+		env = value.Variant()
 	}
 
 	request := c.Response.Call(env, c.Url)
@@ -165,7 +165,7 @@ func (c *Client) Request(r *wire.Request) *Client {
 
 	if r.Cached != nil {
 		client := &Client{
-			Response: r.Cached.Wrap(),
+			Response: r.Cached.Variant(),
 			Url:      url,
 			Options:  c.Options,
 			Err:      nil,
